@@ -575,6 +575,7 @@ export const undoLeadStatus = asyncHandler(async (req, res) => {
   }
 
   const mistaken = hist[hist.length - 1].status; // === lead.status
+  const mistakenAt = hist[hist.length - 1].at;
   const prev = hist[hist.length - 2];
 
   // Bypass the pre('save') status hook — we're rewriting history, not adding to
@@ -591,11 +592,28 @@ export const undoLeadStatus = asyncHandler(async (req, res) => {
     }
   );
 
+  // If the move being undone was into "Interested for event", the seat-booking
+  // fee taken as part of it is void too — drop it so the dashboard and the lead
+  // stop showing money that was never really collected. (A lead only ever has
+  // one booking, created when it first crosses into that stage.)
+  let removedBooking = 0;
+  if (mistaken === "event_interested") {
+    const booking = await EventBooking.findOne({
+      lead: lead._id,
+      createdAt: { $gte: new Date(new Date(mistakenAt).getTime() - 5000) },
+    });
+    if (booking) {
+      removedBooking = booking.amount;
+      await booking.deleteOne();
+    }
+  }
+
   const label = (s) => LEAD_STATUS_LABELS[s] || s;
   await logRemark(
     lead._id,
     req.user._id,
-    `Stage change undone — "${label(mistaken)}" was a mistake, back at "${label(prev.status)}".`,
+    `Stage change undone — "${label(mistaken)}" was a mistake, back at "${label(prev.status)}".` +
+      (removedBooking ? ` Seat booking of ${inr(removedBooking)} cancelled.` : ""),
     "status_change"
   );
 
