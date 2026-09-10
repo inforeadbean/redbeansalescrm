@@ -336,7 +336,15 @@ export const getInsights = asyncHandler(async (req, res) => {
   const leadMatch = (prefix) =>
     lf.assignedTo ? { [`${prefix}.assignedTo`]: lf.assignedTo } : {};
 
-  const [sourceAgg, revenueMixAgg, receivablesAgg, zoomAgg, eventAgg, callAgg, cycleAgg] =
+  // How many DISTINCT Zoom meetings a lead currently sitting at "Zoom 1
+  // Attended" has actually attended — 1 is the normal case, 2+ means they
+  // were put on a re-run because they didn't get the topic the first time
+  // (the "needed a second Zoom" flow on the lead page). Same createdAt
+  // window as the funnel above, so the two stay comparable.
+  const zoomDepthMatch = { "lead.status": "webinar_attended", ...leadMatch("lead") };
+  if (range) zoomDepthMatch["lead.createdAt"] = range;
+
+  const [sourceAgg, revenueMixAgg, receivablesAgg, zoomAgg, eventAgg, callAgg, cycleAgg, zoomDepthAgg, atZoomAttendedCount] =
     await Promise.all([
       Lead.aggregate([
         { $match: { ...lf, ...on("createdAt") } },
@@ -413,6 +421,17 @@ export const getInsights = asyncHandler(async (req, res) => {
         { $project: { days: { $divide: [{ $subtract: ["$conversionDate", "$_lead.createdAt"] }, 86400000] } } },
         { $group: { _id: null, avgDays: { $avg: "$days" }, n: { $sum: 1 } } },
       ]),
+      Webinar.aggregate([
+        { $unwind: "$registrations" },
+        { $match: { "registrations.attended": true } },
+        { $group: { _id: "$registrations.lead", zoomCount: { $sum: 1 } } },
+        { $lookup: { from: "leads", localField: "_id", foreignField: "_id", as: "lead" } },
+        { $unwind: "$lead" },
+        { $match: zoomDepthMatch },
+        { $group: { _id: "$zoomCount", leads: { $sum: 1 } } },
+        { $sort: { _id: 1 } },
+      ]),
+      Lead.countDocuments({ ...lf, ...on("createdAt"), status: "webinar_attended" }),
     ]);
 
   const bySource = Object.fromEntries(sourceAgg.map((r) => [r._id, r]));
@@ -446,6 +465,21 @@ export const getInsights = asyncHandler(async (req, res) => {
   const dealCount = revenueMixAgg.reduce((a, r) => a + r.count, 0);
   const dealRevenue = revenueMixAgg.reduce((a, r) => a + r.revenue, 0);
 
+  // Bucket into 1 / 2 / 3+ Zoom meetings attended — anything past 3 is rare
+  // enough that a longer tail would just clutter the chart. Some leads reach
+  // "Zoom 1 Attended" by a direct manual stage move rather than a ticked
+  // registration (no Webinar record at all) — counted as "0" so the buckets
+  // add up to the same total the funnel shows for this stage.
+  const zoomDepthBuckets = { 0: 0, 1: 0, 2: 0, "3+": 0 };
+  for (const r of zoomDepthAgg) {
+    const key = r._id >= 3 ? "3+" : String(r._id);
+    if (key in zoomDepthBuckets) zoomDepthBuckets[key] += r.leads;
+  }
+  zoomDepthBuckets["0"] = Math.max(
+    0,
+    atZoomAttendedCount - (zoomDepthBuckets["1"] + zoomDepthBuckets["2"] + zoomDepthBuckets["3+"])
+  );
+
   res.json({
     sourcePerformance,
     revenueMix,
@@ -473,5 +507,11 @@ export const getInsights = asyncHandler(async (req, res) => {
       connectRate: calls.completed ? Math.round((calls.connected / calls.completed) * 100) : 0,
     },
     avgSalesCycleDays: cycle.n ? Math.round(cycle.avgDays) : null,
+    zoomAttendanceDepth: [
+      { label: "Attended 1 Zoom", leads: zoomDepthBuckets["1"] },
+      { label: "Attended 2 Zooms", leads: zoomDepthBuckets["2"] },
+      { label: "Attended 3+ Zooms", leads: zoomDepthBuckets["3+"] },
+      { label: "No Zoom on record (moved manually)", leads: zoomDepthBuckets["0"] },
+    ],
   });
 });
