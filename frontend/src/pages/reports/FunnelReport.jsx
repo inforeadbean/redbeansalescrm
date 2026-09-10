@@ -8,6 +8,7 @@ import EmptyState from "../../components/ui/EmptyState.jsx";
 import StatCard from "../../components/ui/StatCard.jsx";
 import SectionLabel from "../../components/SectionLabel.jsx";
 import SalespersonPicker from "../../components/SalespersonPicker.jsx";
+import Listbox from "../../components/ui/Listbox.jsx";
 import BarList from "../../components/charts/BarList.jsx";
 import { useToast } from "../../context/ToastContext.jsx";
 import { useLiveData } from "../../hooks/useLiveData.js";
@@ -99,18 +100,15 @@ export default function FunnelReport() {
         actions={
           <div className="flex items-center gap-2 flex-wrap">
             <SalespersonPicker value={salespersonId} onChange={setSalespersonId} people={people} />
-            <select
+            <Listbox
+              className="w-40"
               value={rangeKey}
-              onChange={(e) => {
-                setRangeKey(e.target.value);
-                localStorage.setItem("rbh_funnel_range", e.target.value);
+              onChange={(v) => {
+                setRangeKey(v);
+                localStorage.setItem("rbh_funnel_range", v);
               }}
-              className="rounded-lg border border-gray-300 px-3 py-2 text-sm bg-white"
-            >
-              {RANGES.map((r) => (
-                <option key={r.key} value={r.key}>{r.label}</option>
-              ))}
-            </select>
+              options={RANGES.map((r) => ({ value: r.key, label: r.label }))}
+            />
             <Button variant="secondary" onClick={doCSV} disabled={!data}>
               <MdFileDownload size={16} /> CSV
             </Button>

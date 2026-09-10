@@ -5,6 +5,7 @@ import Badge from "./ui/Badge.jsx";
 import EmptyState from "./ui/EmptyState.jsx";
 import ConfirmDialog from "./ui/ConfirmDialog.jsx";
 import LeadStageSelect from "./LeadStageSelect.jsx";
+import Listbox from "./ui/Listbox.jsx";
 import { LEAD_STATUS, RSVP_STATUS } from "../utils/constants.js";
 
 // Shared attendee grid for webinar registrations and event invitees.
@@ -78,19 +79,15 @@ export default function AttendeeTable({
               </td>
               {onRsvp && (
                 <td className="py-2.5 px-3">
-                  <select
+                  <Listbox
                     value={r.rsvp}
                     disabled={!editable}
                     title={editable ? undefined : lockedTitle(r)}
-                    onChange={(e) => onRsvp(r._id, e.target.value)}
-                    className="text-xs rounded-md border border-gray-200 px-1.5 py-1 bg-white disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    {Object.entries(RSVP_STATUS).map(([v, m]) => (
-                      <option key={v} value={v}>
-                        {m.label}
-                      </option>
-                    ))}
-                  </select>
+                    onChange={(v) => onRsvp(r._id, v)}
+                    className="w-32"
+                    buttonClassName="rounded-md border border-gray-200 shadow-sm px-1.5 py-1 text-xs bg-white disabled:opacity-50 disabled:cursor-not-allowed"
+                    options={Object.entries(RSVP_STATUS).map(([v, m]) => ({ value: v, label: m.label }))}
+                  />
                 </td>
               )}
               <td className="py-2.5 px-3 text-center">

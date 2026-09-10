@@ -3,6 +3,7 @@ import Modal from "../../components/ui/Modal.jsx";
 import Button from "../../components/ui/Button.jsx";
 import Badge from "../../components/ui/Badge.jsx";
 import { Input, Textarea } from "../../components/ui/Field.jsx";
+import Listbox from "../../components/ui/Listbox.jsx";
 import { useToast } from "../../context/ToastContext.jsx";
 import { LEAD_STATUS } from "../../utils/constants.js";
 import { fmtDate, inr } from "../../utils/format.js";
@@ -146,19 +147,17 @@ export default function StatusChangeModal({ open, onClose, lead, toStatus, onDon
           ) : (
             <label className="block">
               <span className="block text-sm font-medium text-gray-700 mb-1">{sessionCfg.label}</span>
-              <select
+              <Listbox
                 value={sessionId}
-                onChange={(e) => setSessionId(e.target.value)}
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-primary"
-              >
-                {sessions.map((s, i) => (
-                  <option key={s._id} value={s._id}>
-                    {s.title} · {fmtDate(s[sessionCfg.dateKey])}
-                    {i === 0 ? "  (latest)" : ""}
-                  </option>
-                ))}
-                <option value="">— don't link to a session —</option>
-              </select>
+                onChange={setSessionId}
+                options={[
+                  ...sessions.map((s, i) => ({
+                    value: s._id,
+                    label: `${s.title} · ${fmtDate(s[sessionCfg.dateKey])}${i === 0 ? "  (latest)" : ""}`,
+                  })),
+                  { value: "", label: "— don't link to a session —" },
+                ]}
+              />
               <span className="block text-xs text-gray-400 mt-1">{sessionCfg.hint}</span>
             </label>
           ))}

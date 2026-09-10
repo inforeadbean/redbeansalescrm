@@ -6,6 +6,7 @@ import Card from "../../components/ui/Card.jsx";
 import Button from "../../components/ui/Button.jsx";
 import Spinner from "../../components/ui/Spinner.jsx";
 import DataTable from "../../components/DataTable.jsx";
+import Listbox from "../../components/ui/Listbox.jsx";
 import Pagination from "../../components/ui/Pagination.jsx";
 import EmptyState from "../../components/ui/EmptyState.jsx";
 import KanbanBoard from "../../components/kanban/KanbanBoard.jsx";
@@ -372,30 +373,21 @@ export default function LeadsBoard() {
               className="w-full rounded-lg border border-gray-300 shadow-sm pl-9 pr-3 py-2 text-sm transition-[border-color,box-shadow] hover:border-gray-400 focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary"
             />
           </div>
-          <select
+          <Listbox
+            className="w-40"
             value={filters.status}
-            onChange={(e) => setFilter({ status: e.target.value })}
-            className="rounded-lg border border-gray-300 shadow-sm px-3 py-2 text-sm bg-white transition-[border-color,box-shadow] hover:border-gray-400 focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary"
-          >
-            <option value="">All stages</option>
-            {optionsFrom(LEAD_STATUS).map((o) => (
-              <option key={o.value} value={o.value}>
-                {o.label}
-              </option>
-            ))}
-          </select>
-          <select
+            onChange={(v) => setFilter({ status: v })}
+            options={[
+              { value: "", label: "All stages" },
+              ...optionsFrom(LEAD_STATUS).map((o) => ({ ...o, dot: LEAD_STATUS[o.value].dot })),
+            ]}
+          />
+          <Listbox
+            className="w-40"
             value={filters.source}
-            onChange={(e) => setFilter({ source: e.target.value })}
-            className="rounded-lg border border-gray-300 shadow-sm px-3 py-2 text-sm bg-white transition-[border-color,box-shadow] hover:border-gray-400 focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary"
-          >
-            <option value="">All sources</option>
-            {optionsFrom(LEAD_SOURCE).map((o) => (
-              <option key={o.value} value={o.value}>
-                {o.label}
-              </option>
-            ))}
-          </select>
+            onChange={(v) => setFilter({ source: v })}
+            options={[{ value: "", label: "All sources" }, ...optionsFrom(LEAD_SOURCE)]}
+          />
           {(filters.status || filters.source || filters.q) && (
             <button
               onClick={() => setFilters(emptyFilters)}

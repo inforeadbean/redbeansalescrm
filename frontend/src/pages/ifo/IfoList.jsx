@@ -7,6 +7,7 @@ import Button from "../../components/ui/Button.jsx";
 import Badge from "../../components/ui/Badge.jsx";
 import StatCard from "../../components/ui/StatCard.jsx";
 import DataTable from "../../components/DataTable.jsx";
+import Listbox from "../../components/ui/Listbox.jsx";
 import Pagination from "../../components/ui/Pagination.jsx";
 import EmptyState from "../../components/ui/EmptyState.jsx";
 import IfoFormModal from "./IfoFormModal.jsx";
@@ -194,21 +195,22 @@ export default function IfoList() {
 
       <Card padding="p-2">
         <div className="flex flex-wrap items-center gap-2 p-2">
-          <select
+          <Listbox
+            className="w-32"
             value={type}
-            onChange={(e) => {
-              setType(e.target.value);
+            onChange={(v) => {
+              setType(v);
               setPage(1);
               const next = new URLSearchParams(searchParams);
-              e.target.value ? next.set("type", e.target.value) : next.delete("type");
+              v ? next.set("type", v) : next.delete("type");
               setSearchParams(next, { replace: true });
             }}
-            className="rounded-lg border border-gray-300 px-3 py-2 text-sm bg-white"
-          >
-            <option value="">All types</option>
-            <option value="ifo">IFO</option>
-            <option value="rbc">RBC</option>
-          </select>
+            options={[
+              { value: "", label: "All types" },
+              { value: "ifo", label: "IFO" },
+              { value: "rbc", label: "RBC" },
+            ]}
+          />
           {!urlFrom && !urlTo && (
             <PeriodFilter value={period} onChange={(k) => { setPeriod(k); setPage(1); }} />
           )}

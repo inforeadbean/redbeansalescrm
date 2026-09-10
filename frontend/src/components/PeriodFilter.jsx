@@ -1,3 +1,5 @@
+import Listbox from "./ui/Listbox.jsx";
+
 // A single dropdown that slices a list to a time window. The CRM fills up with
 // back-dated data imported from an old system, so the working lists default to
 // "This month" — old records stay one click away under "All time".
@@ -38,17 +40,12 @@ export const periodLabel = (key) => PERIODS.find((p) => p.key === key)?.label ||
 
 export default function PeriodFilter({ value, onChange, className = "" }) {
   return (
-    <select
+    <Listbox
       value={value}
-      onChange={(e) => onChange(e.target.value)}
-      className={`rounded-lg border border-gray-300 px-3 py-2 text-sm bg-white ${className}`}
+      onChange={onChange}
       title="Time window"
-    >
-      {PERIODS.map((p) => (
-        <option key={p.key} value={p.key}>
-          {p.label}
-        </option>
-      ))}
-    </select>
+      className={`w-40 ${className}`}
+      options={PERIODS.map((p) => ({ value: p.key, label: p.label }))}
+    />
   );
 }

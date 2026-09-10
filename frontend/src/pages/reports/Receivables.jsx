@@ -12,6 +12,7 @@ import PageHeader from "../../components/PageHeader.jsx";
 import Card from "../../components/ui/Card.jsx";
 import Button from "../../components/ui/Button.jsx";
 import Badge from "../../components/ui/Badge.jsx";
+import Listbox from "../../components/ui/Listbox.jsx";
 import Spinner from "../../components/ui/Spinner.jsx";
 import EmptyState from "../../components/ui/EmptyState.jsx";
 import StatCard from "../../components/ui/StatCard.jsx";
@@ -91,15 +92,16 @@ export default function Receivables() {
         actions={
           <div className="flex items-center gap-2 flex-wrap">
             <SalespersonPicker value={salespersonId} onChange={setSalespersonId} people={people} />
-            <select
+            <Listbox
+              className="w-32"
               value={type}
-              onChange={(e) => setType(e.target.value)}
-              className="rounded-lg border border-gray-300 px-3 py-2 text-sm bg-white"
-            >
-              <option value="">All types</option>
-              <option value="ifo">IFO</option>
-              <option value="rbc">RBC</option>
-            </select>
+              onChange={setType}
+              options={[
+                { value: "", label: "All types" },
+                { value: "ifo", label: "IFO" },
+                { value: "rbc", label: "RBC" },
+              ]}
+            />
             <Button variant="secondary" onClick={doCSV} disabled={!data}>
               <MdFileDownload size={16} /> CSV
             </Button>

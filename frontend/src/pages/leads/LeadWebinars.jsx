@@ -3,6 +3,7 @@ import { MdVideocam, MdAdd, MdCheckCircle, MdRadioButtonUnchecked } from "react-
 import Card from "../../components/ui/Card.jsx";
 import Button from "../../components/ui/Button.jsx";
 import ConfirmDialog from "../../components/ui/ConfirmDialog.jsx";
+import Listbox from "../../components/ui/Listbox.jsx";
 import { useToast } from "../../context/ToastContext.jsx";
 import { fmtDate } from "../../utils/format.js";
 import { addRegistrations, setAttendance } from "../../services/webinarService.js";
@@ -94,19 +95,18 @@ export default function LeadWebinars({ lead, allWebinars, onChange }) {
 
       {options.length > 0 ? (
         <div className="flex gap-2">
-          <select
+          <Listbox
+            className="flex-1 min-w-0"
             value={adding}
-            onChange={(e) => setAdding(e.target.value)}
-            className="flex-1 min-w-0 rounded-lg border border-gray-300 px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-primary"
-          >
-            <option value="">Add another Zoom meeting…</option>
-            {options.map((w, i) => (
-              <option key={w._id} value={w._id}>
-                {w.title} · {fmtDate(w.scheduledAt)}
-                {i === 0 ? "  (latest)" : ""}
-              </option>
-            ))}
-          </select>
+            onChange={setAdding}
+            options={[
+              { value: "", label: "Add another Zoom meeting…" },
+              ...options.map((w, i) => ({
+                value: w._id,
+                label: `${w.title} · ${fmtDate(w.scheduledAt)}${i === 0 ? "  (latest)" : ""}`,
+              })),
+            ]}
+          />
           <Button onClick={add} disabled={busy || !adding} size="sm">
             <MdAdd size={16} /> Add
           </Button>

@@ -23,6 +23,7 @@ import Button from "../../components/ui/Button.jsx";
 import Badge from "../../components/ui/Badge.jsx";
 import Spinner from "../../components/ui/Spinner.jsx";
 import ConfirmDialog from "../../components/ui/ConfirmDialog.jsx";
+import Listbox from "../../components/ui/Listbox.jsx";
 import LeadFormModal from "./LeadFormModal.jsx";
 import LeadWebinars from "./LeadWebinars.jsx";
 import ReminderModal from "./ReminderModal.jsx";
@@ -457,19 +458,18 @@ export default function LeadDetail() {
                 {sessionCfg.list.length === 0 ? (
                   <p className="mt-1 text-sm text-gray-400">{sessionCfg.empty}</p>
                 ) : (
-                  <select
+                  <Listbox
+                    className="w-full mt-1"
                     value={sessionId}
-                    onChange={(e) => setSessionId(e.target.value)}
-                    className="w-full mt-1 rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
-                  >
-                    {sessionCfg.list.map((s, i) => (
-                      <option key={s._id} value={s._id}>
-                        {s.title} · {fmtDate(s[sessionCfg.dateKey])}
-                        {i === 0 ? "  (latest)" : ""}
-                      </option>
-                    ))}
-                    <option value="">— don't link to a session —</option>
-                  </select>
+                    onChange={setSessionId}
+                    options={[
+                      ...sessionCfg.list.map((s, i) => ({
+                        value: s._id,
+                        label: `${s.title} · ${fmtDate(s[sessionCfg.dateKey])}${i === 0 ? "  (latest)" : ""}`,
+                      })),
+                      { value: "", label: "— don't link to a session —" },
+                    ]}
+                  />
                 )}
               </label>
             )}

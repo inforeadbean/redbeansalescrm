@@ -5,6 +5,7 @@ import Card from "../../components/ui/Card.jsx";
 import Button from "../../components/ui/Button.jsx";
 import Badge from "../../components/ui/Badge.jsx";
 import DataTable from "../../components/DataTable.jsx";
+import Listbox from "../../components/ui/Listbox.jsx";
 import Pagination from "../../components/ui/Pagination.jsx";
 import ConfirmDialog from "../../components/ui/ConfirmDialog.jsx";
 import EmptyState from "../../components/ui/EmptyState.jsx";
@@ -177,25 +178,27 @@ export default function SalesTeamList() {
               className="w-full rounded-lg border border-gray-300 pl-9 pr-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
             />
           </div>
-          <select
+          <Listbox
+            className="w-36"
             value={params.role || ""}
-            onChange={(e) => setParams({ role: e.target.value || undefined })}
-            className="rounded-lg border border-gray-300 px-3 py-2 text-sm bg-white"
-          >
-            <option value="">All roles</option>
-            <option value="salesperson">Sales Person</option>
-            <option value="manager">Manager</option>
-            <option value="admin">Admin</option>
-          </select>
-          <select
+            onChange={(v) => setParams({ role: v || undefined })}
+            options={[
+              { value: "", label: "All roles" },
+              { value: "salesperson", label: "Sales Person" },
+              { value: "manager", label: "Manager" },
+              { value: "admin", label: "Admin" },
+            ]}
+          />
+          <Listbox
+            className="w-32"
             value={params.status || ""}
-            onChange={(e) => setParams({ status: e.target.value || undefined })}
-            className="rounded-lg border border-gray-300 px-3 py-2 text-sm bg-white"
-          >
-            <option value="">Any status</option>
-            <option value="active">Active</option>
-            <option value="inactive">Inactive</option>
-          </select>
+            onChange={(v) => setParams({ status: v || undefined })}
+            options={[
+              { value: "", label: "Any status" },
+              { value: "active", label: "Active" },
+              { value: "inactive", label: "Inactive" },
+            ]}
+          />
         </div>
 
         <div className="px-2">

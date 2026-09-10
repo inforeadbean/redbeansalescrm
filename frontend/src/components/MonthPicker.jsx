@@ -1,4 +1,5 @@
 import { MONTHS } from "../utils/format.js";
+import Listbox from "./ui/Listbox.jsx";
 
 // Two selects — month + year. `value` is { month, year }; `onChange` gets the
 // next value. `month` is normally 1–12, but with `allowYear` / `allowAllTime`
@@ -10,33 +11,22 @@ export default function MonthPicker({ value, onChange, allowYear = false, allowA
   const setMonth = (raw) =>
     onChange({ ...value, month: raw === "year" || raw === "all" ? raw : Number(raw) });
 
+  const monthOptions = [
+    ...(allowAllTime ? [{ value: "all", label: "All time" }] : []),
+    ...(allowYear ? [{ value: "year", label: "Full year" }] : []),
+    ...MONTHS.map((m, i) => ({ value: i + 1, label: m })),
+  ];
+
   return (
     <div className="flex gap-2">
-      <select
-        value={value.month}
-        onChange={(e) => setMonth(e.target.value)}
-        className="rounded-lg border border-gray-300 px-3 py-2 text-sm bg-white"
-      >
-        {allowAllTime && <option value="all">All time</option>}
-        {allowYear && <option value="year">Full year</option>}
-        {MONTHS.map((m, i) => (
-          <option key={m} value={i + 1}>
-            {m}
-          </option>
-        ))}
-      </select>
+      <Listbox className="w-32" value={value.month} onChange={setMonth} options={monthOptions} />
       {!isAllTime && (
-        <select
+        <Listbox
+          className="w-24"
           value={value.year}
-          onChange={(e) => onChange({ ...value, year: Number(e.target.value) })}
-          className="rounded-lg border border-gray-300 px-3 py-2 text-sm bg-white"
-        >
-          {years.map((y) => (
-            <option key={y} value={y}>
-              {y}
-            </option>
-          ))}
-        </select>
+          onChange={(y) => onChange({ ...value, year: Number(y) })}
+          options={years.map((y) => ({ value: y, label: String(y) }))}
+        />
       )}
     </div>
   );
