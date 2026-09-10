@@ -1,5 +1,8 @@
-import { Server } from "socket.io";
 import jwt from "jsonwebtoken";
+
+// socket.io is only needed by initRealtime() (currently unwired). Load it
+// lazily so it stays out of the Vercel serverless bundle — emitSync(), the
+// only part the models actually use, is a pure no-op when `io` is null.
 
 // Real-time layer. Controllers/models never talk to socket.io directly — they
 // call `emitSync(topics, { users, staff })`, which coalesces a burst of writes
@@ -11,7 +14,8 @@ let io = null;
 const ROOM_STAFF = "staff"; // admins + managers
 const roomUser = (id) => `user:${String(id)}`;
 
-export function initRealtime(httpServer, clientOrigins) {
+export async function initRealtime(httpServer, clientOrigins) {
+  const { Server } = await import("socket.io");
   io = new Server(httpServer, {
     cors: { origin: clientOrigins, credentials: true },
     // Modest limits — this is a small internal team.

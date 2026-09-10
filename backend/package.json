@@ -4,6 +4,9 @@
   "description": "Backend REST API for RBH Sales CRM (Red Bean Hospitality) — Lead to IFO conversion pipeline.",
   "main": "server.js",
   "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
   "scripts": {
     "start": "node server.js",
     "dev": "node scripts/devServer.js",

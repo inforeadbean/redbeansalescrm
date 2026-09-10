@@ -32,8 +32,13 @@ export function assertConfig() {
   }
 
   if (problems.length) {
-    console.error("\n[config] Refusing to start:\n" + problems.map((p) => `  • ${p}`).join("\n") + "\n");
-    console.error("  Generate a secret with:  node -e \"console.log(require('crypto').randomBytes(48).toString('base64'))\"\n");
-    process.exit(1);
+    const msg =
+      "[config] Refusing to start:\n" +
+      problems.map((p) => `  • ${p}`).join("\n") +
+      "\n  Generate a secret with:  node -e \"console.log(require('crypto').randomBytes(48).toString('base64'))\"";
+    // Thrown (not process.exit) so it works both for the standalone server —
+    // which catches this and exits cleanly — and the Vercel function, where an
+    // exit would hard-kill the runtime; there it surfaces as a 5xx + a log line.
+    throw new Error(msg);
   }
 }

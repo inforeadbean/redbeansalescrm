@@ -1,0 +1,24 @@
+{
+  "name": "rbh-sales-crm",
+  "version": "1.0.0",
+  "description": "RBH Sales CRM — one project: Express API + React (Vite) frontend, served from a single Node process in production.",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "setup": "npm install && npm --prefix backend install && npm --prefix frontend install",
+    "dev": "concurrently -k -n api,web -c blue,magenta \"npm --prefix backend run dev:bare\" \"npm --prefix frontend run dev\"",
+    "dev:local-db": "concurrently -k -n api,web -c blue,magenta \"npm --prefix backend run dev\" \"npm --prefix frontend run dev\"",
+    "build": "npm --prefix frontend install && npm --prefix frontend run build",
+    "start": "cross-env NODE_ENV=production npm --prefix backend start",
+    "start:serve-client": "cross-env SERVE_CLIENT=true npm --prefix backend run dev:bare",
+    "seed:base": "npm --prefix backend run seed:base",
+    "seed:demo": "npm --prefix backend run seed:demo"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.2",
+    "cross-env": "^7.0.3"
+  }
+}
