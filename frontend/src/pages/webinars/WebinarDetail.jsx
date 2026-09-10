@@ -125,6 +125,7 @@ export default function WebinarDetail() {
       <Card padding="p-2">
         <AttendeeTable
           rows={w.registrations}
+          sessionNoun="this Zoom meeting"
           onStageChange={stage.trigger}
           onToggleAttended={async (regId, val) => {
             await setAttendance(id, regId, val);

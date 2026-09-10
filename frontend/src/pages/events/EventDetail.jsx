@@ -132,6 +132,7 @@ export default function EventDetail() {
       <Card padding="p-2">
         <AttendeeTable
           rows={ev.invitees}
+          sessionNoun="this event"
           onStageChange={stage.trigger}
           onRsvp={async (inviteeId, rsvp) => {
             await setInvitee(id, inviteeId, { rsvp });

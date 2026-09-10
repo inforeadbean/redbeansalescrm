@@ -1,7 +1,9 @@
+import { useState } from "react";
 import { Link } from "react-router-dom";
 import { MdDelete } from "react-icons/md";
 import Badge from "./ui/Badge.jsx";
 import EmptyState from "./ui/EmptyState.jsx";
+import ConfirmDialog from "./ui/ConfirmDialog.jsx";
 import LeadStageSelect from "./LeadStageSelect.jsx";
 import { LEAD_STATUS, RSVP_STATUS } from "../utils/constants.js";
 
@@ -10,10 +12,28 @@ import { LEAD_STATUS, RSVP_STATUS } from "../utils/constants.js";
 // select (events only). `onStageChange(lead, toStatus)` turns the Stage cell
 // into an inline dropdown so a lead can be advanced (e.g. → Zoom 1 Attended)
 // without leaving the page.
-export default function AttendeeTable({ rows, onToggleAttended, onRsvp, onRemove, onStageChange }) {
+// `sessionNoun` is used in the "mark present" confirmation ("… present in
+// the meeting?") — ticking Attended can jump an early-stage lead forward, so
+// it's worth a second look; un-ticking goes straight through.
+export default function AttendeeTable({
+  rows,
+  onToggleAttended,
+  onRsvp,
+  onRemove,
+  onStageChange,
+  sessionNoun = "the meeting",
+}) {
+  const [confirmRow, setConfirmRow] = useState(null);
+
   if (!rows?.length) return <EmptyState title="No one added yet" message="Use “Add leads” above." />;
 
+  const onCheck = (row, checked) => {
+    if (checked) setConfirmRow(row);
+    else onToggleAttended(row._id, false);
+  };
+
   return (
+    <>
     <div className="overflow-x-auto">
       <table className="w-full text-sm">
         <thead>
@@ -67,7 +87,7 @@ export default function AttendeeTable({ rows, onToggleAttended, onRsvp, onRemove
                 <input
                   type="checkbox"
                   checked={!!r.attended}
-                  onChange={(e) => onToggleAttended(r._id, e.target.checked)}
+                  onChange={(e) => onCheck(r, e.target.checked)}
                   className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
                 />
               </td>
@@ -85,5 +105,16 @@ export default function AttendeeTable({ rows, onToggleAttended, onRsvp, onRemove
         </tbody>
       </table>
     </div>
+
+    <ConfirmDialog
+      open={!!confirmRow}
+      onClose={() => setConfirmRow(null)}
+      onConfirm={() => onToggleAttended(confirmRow._id, true)}
+      variant="primary"
+      title="Mark as present?"
+      message={`Are you sure ${confirmRow?.lead?.name || "this lead"} is present in ${sessionNoun}?`}
+      confirmLabel="Yes, mark present"
+    />
+    </>
   );
 }

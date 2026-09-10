@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { MdVideocam, MdAdd, MdCheckCircle, MdRadioButtonUnchecked } from "react-icons/md";
 import Card from "../../components/ui/Card.jsx";
 import Button from "../../components/ui/Button.jsx";
+import ConfirmDialog from "../../components/ui/ConfirmDialog.jsx";
 import { useToast } from "../../context/ToastContext.jsx";
 import { fmtDate } from "../../utils/format.js";
 import { addRegistrations, setAttendance } from "../../services/webinarService.js";
@@ -14,6 +15,7 @@ export default function LeadWebinars({ lead, allWebinars, onChange }) {
   const toast = useToast();
   const [adding, setAdding] = useState("");
   const [busy, setBusy] = useState(false);
+  const [confirmW, setConfirmW] = useState(null);
 
   const linked = lead.webinars || [];
   const options = useMemo(() => {
@@ -36,10 +38,10 @@ export default function LeadWebinars({ lead, allWebinars, onChange }) {
     }
   };
 
-  const toggle = async (w) => {
+  const setAttended = async (w, val) => {
     setBusy(true);
     try {
-      await setAttendance(w.webinarId, w.regId, !w.attended);
+      await setAttendance(w.webinarId, w.regId, val);
       await onChange();
     } catch (err) {
       toast.error(err);
@@ -47,6 +49,9 @@ export default function LeadWebinars({ lead, allWebinars, onChange }) {
       setBusy(false);
     }
   };
+
+  // Marking present asks first; un-marking goes straight through.
+  const toggle = (w) => (w.attended ? setAttended(w, false) : setConfirmW(w));
 
   return (
     <Card padding="p-4">
@@ -111,6 +116,16 @@ export default function LeadWebinars({ lead, allWebinars, onChange }) {
           <p className="text-xs text-gray-400">Added to every Zoom meeting.</p>
         )
       )}
+
+      <ConfirmDialog
+        open={!!confirmW}
+        onClose={() => setConfirmW(null)}
+        onConfirm={() => setAttended(confirmW, true)}
+        variant="primary"
+        title="Mark as present?"
+        message={`Are you sure ${lead.name} attended "${confirmW?.title}"?`}
+        confirmLabel="Yes, mark present"
+      />
     </Card>
   );
 }
