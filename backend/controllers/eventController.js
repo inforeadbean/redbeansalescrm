@@ -1,5 +1,5 @@
 import { asyncHandler } from "../utils/asyncHandler.js";
-import { scopedLeadIds } from "../utils/scopedLeadIds.js";
+import { scopedLeadIds, canActOnLead } from "../utils/scopedLeadIds.js";
 import Event, { RSVP_STATUSES } from "../models/Event.js";
 import Remark from "../models/Remark.js";
 
@@ -133,6 +133,10 @@ export const setInvitee = asyncHandler(async (req, res) => {
     res.status(404);
     throw new Error("Invitee not found.");
   }
+  if (!(await canActOnLead(req.user, invitee.lead))) {
+    res.status(403);
+    throw new Error("You can only update your own leads on an event.");
+  }
   if (req.body.rsvp !== undefined) {
     if (!RSVP_STATUSES.includes(req.body.rsvp)) {
       res.status(400);
@@ -151,6 +155,11 @@ export const removeInvitee = asyncHandler(async (req, res) => {
   if (!event) {
     res.status(404);
     throw new Error("Event not found.");
+  }
+  const invitee = event.invitees.id(req.params.inviteeId);
+  if (invitee && !(await canActOnLead(req.user, invitee.lead))) {
+    res.status(403);
+    throw new Error("You can only remove your own leads from an event.");
   }
   event.invitees.pull({ _id: req.params.inviteeId });
   await event.save();

@@ -126,6 +126,7 @@ export default function WebinarDetail() {
         <AttendeeTable
           rows={w.registrations}
           sessionNoun="this Zoom meeting"
+          canEditRow={(r) => canManage || String(r.lead?.assignedTo?._id || r.lead?.assignedTo || "") === String(user.id)}
           onStageChange={stage.trigger}
           onToggleAttended={async (regId, val) => {
             await setAttendance(id, regId, val);

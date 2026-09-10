@@ -1,5 +1,5 @@
 import { asyncHandler } from "../utils/asyncHandler.js";
-import { scopedLeadIds } from "../utils/scopedLeadIds.js";
+import { scopedLeadIds, canActOnLead } from "../utils/scopedLeadIds.js";
 import Webinar from "../models/Webinar.js";
 import Remark from "../models/Remark.js";
 import Lead from "../models/Lead.js";
@@ -142,6 +142,12 @@ export const setAttendance = asyncHandler(async (req, res) => {
     res.status(404);
     throw new Error("Registration not found.");
   }
+  // A salesperson can only mark their own leads — ticking "attended" can
+  // auto-advance a lead's stage, and that must not touch someone else's lead.
+  if (!(await canActOnLead(req.user, reg.lead))) {
+    res.status(403);
+    throw new Error("You can only mark attendance for your own leads.");
+  }
   const wasAttended = reg.attended;
   reg.attended = !!req.body.attended;
   await webinar.save();
@@ -174,6 +180,11 @@ export const removeRegistration = asyncHandler(async (req, res) => {
   if (!webinar) {
     res.status(404);
     throw new Error("Zoom meeting not found.");
+  }
+  const reg = webinar.registrations.id(req.params.regId);
+  if (reg && !(await canActOnLead(req.user, reg.lead))) {
+    res.status(403);
+    throw new Error("You can only remove your own leads from a Zoom meeting.");
   }
   webinar.registrations.pull({ _id: req.params.regId });
   await webinar.save();

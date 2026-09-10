@@ -133,6 +133,7 @@ export default function EventDetail() {
         <AttendeeTable
           rows={ev.invitees}
           sessionNoun="this event"
+          canEditRow={(r) => canManage || String(r.lead?.assignedTo?._id || r.lead?.assignedTo || "") === String(user.id)}
           onStageChange={stage.trigger}
           onRsvp={async (inviteeId, rsvp) => {
             await setInvitee(id, inviteeId, { rsvp });

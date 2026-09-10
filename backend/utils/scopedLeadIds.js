@@ -15,3 +15,14 @@ export async function scopedLeadIds(user, ids) {
     .lean();
   return rows.map((r) => String(r._id));
 }
+
+// True if `leadId` points at a lead the caller is allowed to act on. Used by the
+// webinar / event attendance + registration-removal endpoints so a salesperson
+// can only touch rows for their own leads (marking "attended" can auto-advance a
+// lead's pipeline stage — that must never happen to someone else's lead).
+// admin / manager are unrestricted here.
+export async function canActOnLead(user, leadId) {
+  if (user.role !== "salesperson") return true;
+  if (!mongoose.isValidObjectId(leadId)) return false;
+  return !!(await Lead.exists({ _id: leadId, assignedTo: user._id }));
+}
