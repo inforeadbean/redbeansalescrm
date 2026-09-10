@@ -5,6 +5,7 @@ import {
   getTrends,
   getMyTasks,
   getTeamPipeline,
+  getInsights,
 } from "../controllers/dashboardController.js";
 import { protect, authorize } from "../middleware/authMiddleware.js";
 
@@ -16,5 +17,6 @@ router.get("/funnel", getFunnel);
 router.get("/trends", getTrends);
 router.get("/my-tasks", getMyTasks);
 router.get("/team-pipeline", authorize("admin", "manager"), getTeamPipeline);
+router.get("/insights", authorize("admin", "manager"), getInsights);
 
 export default router;

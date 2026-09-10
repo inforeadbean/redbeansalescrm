@@ -5,3 +5,4 @@ export const getFunnel = (params) => api.get("/dashboard/funnel", { params }).th
 export const getTrends = (params) => api.get("/dashboard/trends", { params }).then((r) => r.data);
 export const getMyTasks = () => api.get("/dashboard/my-tasks").then((r) => r.data);
 export const getTeamPipeline = () => api.get("/dashboard/team-pipeline").then((r) => r.data);
+export const getInsights = (params) => api.get("/dashboard/insights", { params }).then((r) => r.data);

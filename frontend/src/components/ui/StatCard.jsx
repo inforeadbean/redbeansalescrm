@@ -28,7 +28,8 @@ export default function StatCard({ label, value, hint, icon: Icon, trend, accent
     </>
   );
 
-  const base = "bg-white rounded-xl border border-gray-100 shadow-[0_1px_2px_rgba(16,24,40,0.04)] p-4";
+  const base =
+    "bg-white rounded-xl border border-gray-200/80 shadow-[0_1px_2px_rgba(16,24,40,0.04),0_2px_8px_-2px_rgba(16,24,40,0.06)] p-4";
   if (to) {
     return (
       <Link to={to} state={state} className={`${base} block transition-shadow hover:shadow-md hover:border-gray-200`}>

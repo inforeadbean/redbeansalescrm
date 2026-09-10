@@ -1,15 +1,16 @@
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { leadScope, activityScope, scopedSalespeople, resolveScopedPerson } from "../utils/scope.js";
 import { buildLeaderboard } from "../utils/leaderboard.js";
-import Lead, { LEAD_STATUSES, LEAD_CLOSED } from "../models/Lead.js";
+import Lead, { LEAD_STATUSES, LEAD_CLOSED, LEAD_SOURCES } from "../models/Lead.js";
 import Call from "../models/Call.js";
 import Webinar from "../models/Webinar.js";
 import Event from "../models/Event.js";
-import IfoConversion from "../models/IfoConversion.js";
+import IfoConversion, { CONVERSION_TYPES } from "../models/IfoConversion.js";
 import EventBooking from "../models/EventBooking.js";
 import User from "../models/User.js";
 import { convertedLeadStages } from "../utils/convertedOnly.js";
 import { istDate, istMonthRange } from "../utils/istTime.js";
+import { LEAD_SOURCE_LABELS } from "../utils/labels.js";
 
 const startOfMonth = (d = new Date()) => new Date(d.getFullYear(), d.getMonth(), 1);
 const daysAgo = (n) => {
@@ -312,5 +313,165 @@ export const getTeamPipeline = asyncHandler(async (req, res) => {
         ),
       };
     }),
+  });
+});
+
+// @route GET /api/dashboard/insights?month&year&salesperson — extra KPIs for
+// the admin/manager dashboard: where leads come from and how well each
+// source converts, the IFO/RBC revenue split, money still owed (all-time —
+// receivables don't reset month to month), Zoom/event turnout, call activity,
+// and two "how good is the sales motion" numbers (average deal size, average
+// days from a lead's first contact to it closing). Same role scoping as the
+// rest of this file (admin/manager only — see the route).
+export const getInsights = asyncHandler(async (req, res) => {
+  const personId = await resolveScopedPerson(req.user, req.query.salesperson);
+  const lf = await leadScope(req.user, personId);
+  const iff = await activityScope(req.user, "convertedBy", personId);
+  const callF = await activityScope(req.user, "calledBy", personId);
+  const { range } = periodWindow(req.query);
+  const on = (field) => (range ? { [field]: range } : {});
+  // Webinar/Event registrations aren't role-scoped collections themselves
+  // (every user sees the same sessions) — scope the *lead* side of the join
+  // instead, mirroring whatever leadScope resolved to.
+  const leadMatch = (prefix) =>
+    lf.assignedTo ? { [`${prefix}.assignedTo`]: lf.assignedTo } : {};
+
+  const [sourceAgg, revenueMixAgg, receivablesAgg, zoomAgg, eventAgg, callAgg, cycleAgg] =
+    await Promise.all([
+      Lead.aggregate([
+        { $match: { ...lf, ...on("createdAt") } },
+        {
+          $group: {
+            _id: "$source",
+            leads: { $sum: 1 },
+            converted: { $sum: { $cond: [{ $eq: ["$status", "converted"] }, 1, 0] } },
+          },
+        },
+      ]),
+      IfoConversion.aggregate([
+        { $match: { ...iff, ...on("conversionDate") } },
+        ...convertedLeadStages,
+        { $group: { _id: "$conversionType", count: { $sum: 1 }, revenue: { $sum: "$dealValue" } } },
+      ]),
+      IfoConversion.aggregate([
+        { $match: iff },
+        ...convertedLeadStages,
+        {
+          $group: {
+            _id: null,
+            totalDeal: { $sum: "$dealValue" },
+            totalCollected: { $sum: "$amountReceived" },
+            clientsWithDues: { $sum: { $cond: [{ $lt: ["$amountReceived", "$dealValue"] }, 1, 0] } },
+          },
+        },
+      ]),
+      Webinar.aggregate([
+        { $match: on("scheduledAt") },
+        { $unwind: "$registrations" },
+        { $lookup: { from: "leads", localField: "registrations.lead", foreignField: "_id", as: "lead" } },
+        { $unwind: "$lead" },
+        { $match: leadMatch("lead") },
+        {
+          $group: {
+            _id: null,
+            registered: { $sum: 1 },
+            attended: { $sum: { $cond: ["$registrations.attended", 1, 0] } },
+          },
+        },
+      ]),
+      Event.aggregate([
+        { $match: on("date") },
+        { $unwind: "$invitees" },
+        { $lookup: { from: "leads", localField: "invitees.lead", foreignField: "_id", as: "lead" } },
+        { $unwind: "$lead" },
+        { $match: leadMatch("lead") },
+        {
+          $group: {
+            _id: null,
+            invited: { $sum: 1 },
+            attended: { $sum: { $cond: ["$invitees.attended", 1, 0] } },
+          },
+        },
+      ]),
+      Call.aggregate([
+        { $match: { ...callF, ...on("scheduledAt") } },
+        {
+          $group: {
+            _id: null,
+            total: { $sum: 1 },
+            completed: { $sum: { $cond: [{ $eq: ["$status", "completed"] }, 1, 0] } },
+            missed: { $sum: { $cond: [{ $eq: ["$status", "missed"] }, 1, 0] } },
+            connected: { $sum: { $cond: [{ $eq: ["$outcome", "connected"] }, 1, 0] } },
+          },
+        },
+      ]),
+      IfoConversion.aggregate([
+        { $match: { ...iff, ...on("conversionDate") } },
+        { $lookup: { from: "leads", localField: "lead", foreignField: "_id", as: "_lead" } },
+        { $unwind: "$_lead" },
+        { $match: { "_lead.status": "converted" } },
+        { $project: { days: { $divide: [{ $subtract: ["$conversionDate", "$_lead.createdAt"] }, 86400000] } } },
+        { $group: { _id: null, avgDays: { $avg: "$days" }, n: { $sum: 1 } } },
+      ]),
+    ]);
+
+  const bySource = Object.fromEntries(sourceAgg.map((r) => [r._id, r]));
+  const sourcePerformance = LEAD_SOURCES.map((s) => {
+    const row = bySource[s];
+    const leads = row?.leads || 0;
+    const converted = row?.converted || 0;
+    return {
+      source: s,
+      label: LEAD_SOURCE_LABELS[s] || s,
+      leads,
+      converted,
+      conversionRate: leads ? Math.round((converted / leads) * 1000) / 10 : 0,
+    };
+  }).filter((r) => r.leads > 0);
+
+  const byType = Object.fromEntries(revenueMixAgg.map((r) => [r._id, r]));
+  const revenueMix = CONVERSION_TYPES.map((t) => ({
+    type: t,
+    label: t.toUpperCase(),
+    count: byType[t]?.count || 0,
+    revenue: byType[t]?.revenue || 0,
+  }));
+
+  const rec = receivablesAgg[0] || {};
+  const zoom = zoomAgg[0] || {};
+  const event = eventAgg[0] || {};
+  const calls = callAgg[0] || {};
+  const cycle = cycleAgg[0] || {};
+
+  const dealCount = revenueMixAgg.reduce((a, r) => a + r.count, 0);
+  const dealRevenue = revenueMixAgg.reduce((a, r) => a + r.revenue, 0);
+
+  res.json({
+    sourcePerformance,
+    revenueMix,
+    avgDealSize: dealCount ? Math.round(dealRevenue / dealCount) : 0,
+    collections: {
+      totalDeal: rec.totalDeal || 0,
+      totalCollected: rec.totalCollected || 0,
+      totalOutstanding: Math.max(0, (rec.totalDeal || 0) - (rec.totalCollected || 0)),
+      pctCollected: rec.totalDeal ? Math.round((rec.totalCollected / rec.totalDeal) * 100) : 0,
+      clientsWithDues: rec.clientsWithDues || 0,
+    },
+    attendance: {
+      zoomRegistered: zoom.registered || 0,
+      zoomAttended: zoom.attended || 0,
+      zoomRate: zoom.registered ? Math.round((zoom.attended / zoom.registered) * 100) : 0,
+      eventInvited: event.invited || 0,
+      eventAttended: event.attended || 0,
+      eventRate: event.invited ? Math.round((event.attended / event.invited) * 100) : 0,
+    },
+    calls: {
+      total: calls.total || 0,
+      completed: calls.completed || 0,
+      missed: calls.missed || 0,
+      connected: calls.connected || 0,
+      connectRate: calls.completed ? Math.round((calls.connected / calls.completed) * 100) : 0,
+    },
+    avgSalesCycleDays: cycle.n ? Math.round(cycle.avgDays) : null,
   });
 });

@@ -15,6 +15,15 @@ export const LEAD_STATUS_LABELS = {
   invalid: "Invalid",
 };
 
+export const LEAD_SOURCE_LABELS = {
+  webinar: "Zoom meeting",
+  referral: "Referral",
+  cold_call: "Cold call",
+  social: "Social",
+  walk_in: "Walk-in",
+  other: "Other",
+};
+
 export const CALL_OUTCOME_LABELS = {
   connected: "Connected",
   no_answer: "No answer",

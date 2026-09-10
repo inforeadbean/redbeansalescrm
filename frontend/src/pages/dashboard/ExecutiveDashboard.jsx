@@ -10,6 +10,13 @@ import {
   MdEmojiEvents,
   MdEventSeat,
   MdOutlineInsights,
+  MdOutlineHourglassEmpty,
+  MdOutlineVideocam,
+  MdOutlineEvent,
+  MdOutlinePhoneInTalk,
+  MdOutlinePercent,
+  MdOutlinePayments,
+  MdOutlineReceiptLong,
 } from "react-icons/md";
 import PageHeader from "../../components/PageHeader.jsx";
 import Card from "../../components/ui/Card.jsx";
@@ -26,8 +33,9 @@ import MiniBars from "../../components/charts/MiniBars.jsx";
 import DonutChart from "../../components/charts/DonutChart.jsx";
 import { useToast } from "../../context/ToastContext.jsx";
 import { LEAD_STATUS, LEAD_STATUS_ORDER } from "../../utils/constants.js";
+import { CATEGORICAL } from "../../utils/chartTheme.js";
 import { inrCompact, MONTHS } from "../../utils/format.js";
-import { getSummary, getFunnel, getTrends, getTeamPipeline } from "../../services/dashboardService.js";
+import { getSummary, getFunnel, getTrends, getTeamPipeline, getInsights } from "../../services/dashboardService.js";
 import { getLeaderboard } from "../../services/reportService.js";
 import { getAssignable } from "../../services/userService.js";
 
@@ -44,6 +52,7 @@ export default function ExecutiveDashboard({ title, subtitle }) {
   const [people, setPeople] = useState([]);
   const [core, setCore] = useState(null);
   const [wide, setWide] = useState(null);
+  const [insights, setInsights] = useState(null);
 
   useEffect(() => {
     getAssignable()
@@ -73,6 +82,10 @@ export default function ExecutiveDashboard({ title, subtitle }) {
     const params = { ...period, salesperson: salespersonId || undefined };
     Promise.all([getSummary(params), getFunnel(params)])
       .then(([summary, funnel]) => setCore({ summary, funnel }))
+      .catch((err) => toast.error(err));
+    setInsights(null);
+    getInsights(params)
+      .then(setInsights)
       .catch((err) => toast.error(err));
   }, [period, salespersonId, toast]);
 
@@ -273,6 +286,140 @@ export default function ExecutiveDashboard({ title, subtitle }) {
                   </table>
                 </div>
               </Card>
+            </>
+          )}
+
+          {insights && (
+            <>
+              <SectionLabel hint={`Showing ${periodLabel}`}>Insights</SectionLabel>
+              <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-3">
+                <StatCard
+                  label="Avg deal size"
+                  value={inrCompact(insights.avgDealSize)}
+                  icon={MdOutlineMonetizationOn}
+                  accent="text-emerald-600"
+                  hint="per conversion"
+                />
+                <StatCard
+                  label="Sales cycle"
+                  value={insights.avgSalesCycleDays != null ? `${insights.avgSalesCycleDays}d` : "—"}
+                  icon={MdOutlineHourglassEmpty}
+                  hint="lead → converted"
+                />
+                <StatCard
+                  label="Zoom attendance"
+                  value={`${insights.attendance.zoomRate}%`}
+                  icon={MdOutlineVideocam}
+                  hint={`${insights.attendance.zoomAttended} of ${insights.attendance.zoomRegistered} registered`}
+                  to="/webinars"
+                />
+                <StatCard
+                  label="Event attendance"
+                  value={`${insights.attendance.eventRate}%`}
+                  icon={MdOutlineEvent}
+                  hint={`${insights.attendance.eventAttended} of ${insights.attendance.eventInvited} invited`}
+                  to="/events"
+                />
+                <StatCard
+                  label="Calls logged"
+                  value={insights.calls.total}
+                  icon={MdOutlinePhoneInTalk}
+                  hint={`${insights.calls.missed} missed`}
+                  to="/calls"
+                  state={fromDash}
+                />
+                <StatCard
+                  label="Connect rate"
+                  value={`${insights.calls.connectRate}%`}
+                  icon={MdOutlinePercent}
+                  hint={`${insights.calls.connected} of ${insights.calls.completed} completed`}
+                  to="/calls"
+                  state={fromDash}
+                />
+              </div>
+
+              <div className="grid xl:grid-cols-2 gap-4 mt-4">
+                <Card>
+                  <h3 className="font-bold text-gray-800">Lead source performance</h3>
+                  <p className="text-xs font-semibold text-gray-500 mb-3">
+                    Leads {periodLabel}, and the share of each that's converted.
+                  </p>
+                  {insights.sourcePerformance.length ? (
+                    <ul className="space-y-2.5">
+                      {insights.sourcePerformance.map((s) => {
+                        const peak = Math.max(1, ...insights.sourcePerformance.map((r) => r.leads));
+                        return (
+                          <li key={s.source} className="grid grid-cols-[6.5rem_1fr_2.5rem_3rem] items-center gap-3 text-sm">
+                            <span className="text-gray-500 truncate" title={s.label}>
+                              {s.label}
+                            </span>
+                            <span className="h-5 bg-gray-100 rounded-full overflow-hidden">
+                              <span
+                                className="block h-full rounded-full bg-primary transition-[width] duration-500"
+                                style={{ width: `${Math.max(2, (s.leads / peak) * 100)}%` }}
+                              />
+                            </span>
+                            <span className="text-gray-800 font-semibold tabular-nums text-right">{s.leads}</span>
+                            <span
+                              className="text-xs font-semibold tabular-nums text-right"
+                              title="Share of this source's leads that converted"
+                            >
+                              {s.conversionRate}%
+                            </span>
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  ) : (
+                    <p className="text-sm text-gray-400">No leads in this period yet.</p>
+                  )}
+                </Card>
+                <Card>
+                  <h3 className="font-bold text-gray-800">Revenue mix — IFO vs RBC</h3>
+                  <p className="text-xs font-semibold text-gray-500 mb-3">Confirmed deal value {periodLabel}, by conversion type.</p>
+                  {insights.revenueMix.some((r) => r.revenue > 0) ? (
+                    <DonutChart
+                      data={insights.revenueMix.map((r, i) => ({
+                        label: `${r.label} (${r.count})`,
+                        value: r.revenue,
+                        color: CATEGORICAL[i],
+                      }))}
+                      format={inrCompact}
+                      centerLabel="revenue"
+                    />
+                  ) : (
+                    <p className="text-sm text-gray-400">No conversions in this period yet.</p>
+                  )}
+                </Card>
+              </div>
+
+              <SectionLabel hint="Money owed doesn't reset month to month">Collections — all-time</SectionLabel>
+              <div className="grid grid-cols-2 xl:grid-cols-3 gap-3">
+                <StatCard
+                  label="Outstanding"
+                  value={inrCompact(insights.collections.totalOutstanding)}
+                  icon={MdOutlineReceiptLong}
+                  accent="text-amber-600"
+                  hint="still to be collected"
+                  to="/reports/receivables"
+                  state={fromDash}
+                />
+                <StatCard
+                  label="Collected"
+                  value={`${insights.collections.pctCollected}%`}
+                  icon={MdOutlinePayments}
+                  accent="text-emerald-600"
+                  hint={`${inrCompact(insights.collections.totalCollected)} of ${inrCompact(insights.collections.totalDeal)}`}
+                />
+                <StatCard
+                  label="Clients with dues"
+                  value={insights.collections.clientsWithDues}
+                  icon={MdOutlineHandshake}
+                  hint="still owe some amount"
+                  to="/reports/receivables"
+                  state={fromDash}
+                />
+              </div>
             </>
           )}
         </>
