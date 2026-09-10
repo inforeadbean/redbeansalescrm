@@ -508,10 +508,10 @@ export const getInsights = asyncHandler(async (req, res) => {
     },
     avgSalesCycleDays: cycle.n ? Math.round(cycle.avgDays) : null,
     zoomAttendanceDepth: [
-      { label: "Attended 1 Zoom", leads: zoomDepthBuckets["1"] },
-      { label: "Attended 2 Zooms", leads: zoomDepthBuckets["2"] },
-      { label: "Attended 3+ Zooms", leads: zoomDepthBuckets["3+"] },
-      { label: "No Zoom on record (moved manually)", leads: zoomDepthBuckets["0"] },
+      { label: "1 Zoom", leads: zoomDepthBuckets["1"] },
+      { label: "2 Zooms", leads: zoomDepthBuckets["2"] },
+      { label: "3+ Zooms", leads: zoomDepthBuckets["3+"] },
+      { label: "No Zoom on record", leads: zoomDepthBuckets["0"] },
     ],
   });
 });

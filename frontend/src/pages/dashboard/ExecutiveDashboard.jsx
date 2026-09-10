@@ -215,14 +215,23 @@ export default function ExecutiveDashboard({ title, subtitle }) {
               {insights && insights.zoomAttendanceDepth.some((d) => d.leads > 0) && (
                 <div className="mt-4 pt-3 border-t border-gray-100">
                   <p className="text-xs font-semibold text-gray-500 mb-2">
-                    "Zoom 1 Attended" isn't always just one Zoom — how many these leads actually sat through:
+                    Zoom 1 Attended — by number of sessions attended
                   </p>
-                  <BarList
-                    items={insights.zoomAttendanceDepth
+                  <div className="flex flex-wrap gap-2">
+                    {insights.zoomAttendanceDepth
                       .filter((d) => d.leads > 0)
-                      .map((d) => ({ label: d.label, value: d.leads }))}
-                    barColor="#D97706"
-                  />
+                      .map((d) => (
+                        <span
+                          key={d.label}
+                          className="inline-flex items-center gap-1.5 rounded-full bg-amber-50 border border-amber-200/80 pl-3 pr-2.5 py-1 text-xs font-semibold text-amber-800"
+                        >
+                          {d.label}
+                          <span className="inline-flex items-center justify-center min-w-[1.25rem] h-5 rounded-full bg-amber-100 text-amber-900 font-bold tabular-nums px-1">
+                            {d.leads}
+                          </span>
+                        </span>
+                      ))}
+                  </div>
                 </div>
               )}
             </Card>
