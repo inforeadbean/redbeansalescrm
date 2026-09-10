@@ -62,7 +62,7 @@ export default function AskAssistant() {
           <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100 bg-primary text-white shrink-0">
             <div className="flex items-center gap-2 min-w-0">
               <MdOutlineSmartToy size={18} />
-              <span className="font-semibold text-sm truncate">Ask — your CRM data</span>
+              <span className="font-semibold text-sm truncate">Ask</span>
             </div>
             <button onClick={() => setOpen(false)} aria-label="Close" className="text-white/80 hover:text-white">
               <MdClose size={18} />
