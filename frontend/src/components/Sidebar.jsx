@@ -86,7 +86,7 @@ export default function Sidebar({ open, onClose }) {
       {open && <div className="fixed inset-0 bg-black/40 z-30 xl:hidden" onClick={onClose} />}
 
       <aside
-        className={`fixed xl:static inset-y-0 left-0 z-40 w-64 bg-white border-r border-gray-200 flex flex-col
+        className={`fixed xl:static inset-y-0 left-0 z-40 w-64 bg-white border-r border-gray-200 shadow-[1px_0_3px_rgba(16,24,40,0.03)] flex flex-col
           transform transition-transform duration-200 ease-in-out
           ${open ? "translate-x-0" : "-translate-x-full"} xl:translate-x-0`}
       >
@@ -123,15 +123,18 @@ export default function Sidebar({ open, onClose }) {
                     onClick={onClose}
                     end={to === "/dashboard"}
                     className={({ isActive }) =>
-                      `flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                      `relative flex items-center gap-3 pl-3 pr-3 py-2 rounded-lg text-sm transition-colors ${
                         isActive
-                          ? "bg-primary-light text-primary-dark"
-                          : "text-gray-600 hover:bg-gray-100"
+                          ? "bg-primary-light text-primary-dark font-semibold shadow-sm"
+                          : "text-gray-600 font-medium hover:bg-gray-100"
                       }`
                     }
                   >
                     {({ isActive }) => (
                       <>
+                        {isActive && (
+                          <span className="absolute left-0 top-1/2 -translate-y-1/2 h-4 w-[3px] rounded-r-full bg-primary" />
+                        )}
                         <Icon size={19} className={isActive ? "text-primary" : section.accent.text} />
                         {label}
                       </>

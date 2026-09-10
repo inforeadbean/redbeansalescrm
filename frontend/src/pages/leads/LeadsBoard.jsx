@@ -259,19 +259,19 @@ export default function LeadsBoard() {
   };
 
   const ViewToggle = (
-    <div className="flex rounded-lg border border-gray-300 overflow-hidden">
+    <div className="flex rounded-lg border border-gray-300 shadow-sm bg-white p-0.5">
       <button
         onClick={() => setView("kanban")}
-        className={`flex items-center gap-1.5 px-3 py-2 text-sm ${
-          view === "kanban" ? "bg-primary text-white" : "bg-white text-gray-600"
+        className={`flex items-center gap-1.5 px-3 py-1.5 text-sm font-semibold rounded-md transition-all ${
+          view === "kanban" ? "bg-primary text-white shadow-sm" : "text-gray-500 hover:text-gray-800"
         }`}
       >
         <MdViewKanban size={16} /> Board
       </button>
       <button
         onClick={() => setView("table")}
-        className={`flex items-center gap-1.5 px-3 py-2 text-sm ${
-          view === "table" ? "bg-primary text-white" : "bg-white text-gray-600"
+        className={`flex items-center gap-1.5 px-3 py-1.5 text-sm font-semibold rounded-md transition-all ${
+          view === "table" ? "bg-primary text-white shadow-sm" : "text-gray-500 hover:text-gray-800"
         }`}
       >
         <MdTableRows size={16} /> Table
@@ -369,13 +369,13 @@ export default function LeadsBoard() {
               placeholder="Search name, phone, brand, city…"
               value={filters.q}
               onChange={(e) => setFilter({ q: e.target.value })}
-              className="w-full rounded-lg border border-gray-300 pl-9 pr-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+              className="w-full rounded-lg border border-gray-300 shadow-sm pl-9 pr-3 py-2 text-sm transition-[border-color,box-shadow] hover:border-gray-400 focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary"
             />
           </div>
           <select
             value={filters.status}
             onChange={(e) => setFilter({ status: e.target.value })}
-            className="rounded-lg border border-gray-300 px-3 py-2 text-sm bg-white"
+            className="rounded-lg border border-gray-300 shadow-sm px-3 py-2 text-sm bg-white transition-[border-color,box-shadow] hover:border-gray-400 focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary"
           >
             <option value="">All stages</option>
             {optionsFrom(LEAD_STATUS).map((o) => (
@@ -387,7 +387,7 @@ export default function LeadsBoard() {
           <select
             value={filters.source}
             onChange={(e) => setFilter({ source: e.target.value })}
-            className="rounded-lg border border-gray-300 px-3 py-2 text-sm bg-white"
+            className="rounded-lg border border-gray-300 shadow-sm px-3 py-2 text-sm bg-white transition-[border-color,box-shadow] hover:border-gray-400 focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary"
           >
             <option value="">All sources</option>
             {optionsFrom(LEAD_SOURCE).map((o) => (
@@ -399,7 +399,7 @@ export default function LeadsBoard() {
           {(filters.status || filters.source || filters.q) && (
             <button
               onClick={() => setFilters(emptyFilters)}
-              className="text-sm text-gray-400 hover:text-gray-600 px-2"
+              className="text-sm font-semibold text-gray-400 hover:text-gray-600 px-2"
             >
               Clear
             </button>

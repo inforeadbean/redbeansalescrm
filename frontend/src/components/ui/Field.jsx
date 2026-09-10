@@ -4,14 +4,14 @@
 import { forwardRef } from "react";
 
 const base =
-  "w-full rounded-lg border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary disabled:bg-gray-50 disabled:text-gray-400";
-const border = (error) => (error ? "border-red-400" : "border-gray-300");
+  "w-full rounded-lg border px-3 py-2 text-sm shadow-sm transition-[border-color,box-shadow] focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary disabled:bg-gray-50 disabled:text-gray-400 disabled:shadow-none";
+const border = (error) => (error ? "border-red-400" : "border-gray-300 hover:border-gray-400");
 
 export function FieldShell({ label, error, hint, required, children }) {
   return (
     <label className="block">
       {label && (
-        <span className="block text-sm font-medium text-gray-700 mb-1">
+        <span className="block text-sm font-semibold text-gray-700 mb-1.5">
           {label}
           {required && <span className="text-red-500"> *</span>}
         </span>
