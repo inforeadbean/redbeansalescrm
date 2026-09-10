@@ -35,7 +35,7 @@ import { useAuth } from "../../context/AuthContext.jsx";
 import { useLiveData } from "../../hooks/useLiveData.js";
 import { ROLES } from "../../utils/roles.js";
 import { LEAD_STATUS, LEAD_STATUS_ORDER, LEAD_SOURCE, moveBlocked } from "../../utils/constants.js";
-import { fmtDateTime, fmtDateTimeFull, fmtDate, fromNow, inr, initials, pct } from "../../utils/format.js";
+import { fmtDateTime, fmtDateTimeFull, fmtDate, fromNow, inr, initials, pct, byNearestFirst } from "../../utils/format.js";
 import {
   getLead,
   updateLeadStatus,
@@ -112,14 +112,13 @@ export default function LeadDetail() {
   }, [data?.lead?.status]);
 
   // Short lists to pick from when moving a lead to "Interested for Zoom 1" /
-  // "Interested for event" — newest first (the API sorts by date desc).
-  // Cancelled sessions are hidden.
+  // "Interested for event" — soonest-upcoming first. Cancelled sessions are hidden.
   useEffect(() => {
     listWebinars()
-      .then((rows) => setWebinars((rows || []).filter((w) => w.status !== "cancelled")))
+      .then((rows) => setWebinars(byNearestFirst((rows || []).filter((w) => w.status !== "cancelled"), "scheduledAt")))
       .catch(() => {});
     listEvents()
-      .then((rows) => setEvents((rows || []).filter((e) => e.status !== "cancelled")))
+      .then((rows) => setEvents(byNearestFirst((rows || []).filter((e) => e.status !== "cancelled"), "date")))
       .catch(() => {});
   }, []);
 
@@ -142,7 +141,7 @@ export default function LeadDetail() {
   };
   const sessionCfg = SESSION_STAGES[nextStatus] || null;
 
-  // Default the picker to the latest session the moment such a stage is chosen.
+  // Default the picker to the soonest-upcoming session the moment such a stage is chosen.
   useEffect(() => {
     const cfg = SESSION_STAGES[nextStatus];
     if (cfg && !sessionId && cfg.list.length) setSessionId(cfg.list[0]._id);
@@ -465,7 +464,7 @@ export default function LeadDetail() {
                     options={[
                       ...sessionCfg.list.map((s, i) => ({
                         value: s._id,
-                        label: `${s.title} · ${fmtDate(s[sessionCfg.dateKey])}${i === 0 ? "  (latest)" : ""}`,
+                        label: `${s.title} · ${fmtDate(s[sessionCfg.dateKey])}${i === 0 ? "  (next up)" : ""}`,
                       })),
                       { value: "", label: "— don't link to a session —" },
                     ]}

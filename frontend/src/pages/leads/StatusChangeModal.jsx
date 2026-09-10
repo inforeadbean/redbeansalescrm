@@ -6,13 +6,13 @@ import { Input, Textarea } from "../../components/ui/Field.jsx";
 import Listbox from "../../components/ui/Listbox.jsx";
 import { useToast } from "../../context/ToastContext.jsx";
 import { LEAD_STATUS } from "../../utils/constants.js";
-import { fmtDate, inr } from "../../utils/format.js";
+import { fmtDate, inr, byNearestFirst } from "../../utils/format.js";
 import { updateLeadStatus } from "../../services/leadService.js";
 import { listWebinars, addRegistrations } from "../../services/webinarService.js";
 import { listEvents, addInvitees } from "../../services/eventService.js";
 
 // Moving a lead to one of these stages also lets the salesperson pick which
-// webinar/event to add them to (newest first, "latest" pre-selected).
+// webinar/event to add them to (soonest-upcoming first, pre-selected).
 const SESSION_STAGE = {
   webinar_interested: {
     load: listWebinars,
@@ -56,7 +56,7 @@ export default function StatusChangeModal({ open, onClose, lead, toStatus, onDon
   }, [open, lead]);
 
   // Load the webinar / event list when moving to a session stage; default the
-  // picker to the latest one.
+  // picker to whichever one is coming up soonest.
   useEffect(() => {
     if (!open || !sessionCfg) {
       setSessions([]);
@@ -68,7 +68,10 @@ export default function StatusChangeModal({ open, onClose, lead, toStatus, onDon
       .load()
       .then((rows) => {
         if (!alive) return;
-        const list = (rows || []).filter((s) => s.status !== "cancelled");
+        const list = byNearestFirst(
+          (rows || []).filter((s) => s.status !== "cancelled"),
+          sessionCfg.dateKey
+        );
         setSessions(list);
         setSessionId(list[0]?._id || "");
       })
@@ -153,7 +156,7 @@ export default function StatusChangeModal({ open, onClose, lead, toStatus, onDon
                 options={[
                   ...sessions.map((s, i) => ({
                     value: s._id,
-                    label: `${s.title} · ${fmtDate(s[sessionCfg.dateKey])}${i === 0 ? "  (latest)" : ""}`,
+                    label: `${s.title} · ${fmtDate(s[sessionCfg.dateKey])}${i === 0 ? "  (next up)" : ""}`,
                   })),
                   { value: "", label: "— don't link to a session —" },
                 ]}

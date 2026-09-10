@@ -101,3 +101,21 @@ export const MONTHS = [
   "Jan", "Feb", "Mar", "Apr", "May", "Jun",
   "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
 ];
+
+// Orders a list of Zoom meetings / events so the one a picker should default
+// to sits at index 0: the soonest one still upcoming, or — if every session
+// in the list is already past — the most recently-completed one. Used
+// wherever a lead is being registered/linked to "the next session", so the
+// preselected option (and the option actually shown first) is whichever one
+// a salesperson would actually mean by "the next Zoom" / "the next event".
+export function byNearestFirst(list, dateKey = "scheduledAt") {
+  const now = Date.now();
+  return [...(list || [])].sort((a, b) => {
+    const da = new Date(a[dateKey]).getTime() - now;
+    const db = new Date(b[dateKey]).getTime() - now;
+    const aFuture = da >= 0;
+    const bFuture = db >= 0;
+    if (aFuture !== bFuture) return aFuture ? -1 : 1;
+    return aFuture ? da - db : db - da;
+  });
+}

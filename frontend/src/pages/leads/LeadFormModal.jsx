@@ -7,7 +7,7 @@ import { useToast } from "../../context/ToastContext.jsx";
 import { useAuth } from "../../context/AuthContext.jsx";
 import { ROLES } from "../../utils/roles.js";
 import { LEAD_SOURCE, optionsFrom } from "../../utils/constants.js";
-import { fmtDate } from "../../utils/format.js";
+import { fmtDate, byNearestFirst } from "../../utils/format.js";
 import { createLead, updateLead } from "../../services/leadService.js";
 import { getAssignable } from "../../services/userService.js";
 import { listWebinars } from "../../services/webinarService.js";
@@ -34,11 +34,12 @@ export default function LeadFormModal({ open, onClose, onSaved, lead }) {
   useEffect(() => {
     if (!open) return;
     if (canAssign) getAssignable().then(setPeople).catch(() => {});
-    if (!editing) listWebinars().then(setWebinars).catch(() => {});
+    if (!editing) listWebinars().then((rows) => setWebinars(byNearestFirst(rows, "scheduledAt"))).catch(() => {});
   }, [open, canAssign, editing]);
 
-  // New leads mostly come from the most recent webinar — preselect it once the
-  // list (sorted newest-first) has rendered its <option>s. The user can clear it.
+  // New leads mostly come from whichever Zoom is coming up next — preselect it
+  // once the list (soonest-upcoming first) has rendered its <option>s. The
+  // user can clear it.
   useEffect(() => {
     if (open && !editing && webinars[0]?._id) {
       setValue("webinar", webinars[0]._id, { shouldDirty: false });

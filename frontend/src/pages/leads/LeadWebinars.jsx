@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { MdVideocam, MdAdd, MdCheckCircle, MdRadioButtonUnchecked } from "react-icons/md";
 import Card from "../../components/ui/Card.jsx";
 import Button from "../../components/ui/Button.jsx";
@@ -23,6 +23,14 @@ export default function LeadWebinars({ lead, allWebinars, onChange }) {
     const has = new Set(linked.map((w) => String(w.webinarId)));
     return (allWebinars || []).filter((w) => !has.has(String(w._id)));
   }, [allWebinars, linked]);
+
+  // Default the picker to whichever Zoom meeting is coming up soonest (the
+  // list is already sorted that way — see LeadDetail's byNearestFirst).
+  useEffect(() => {
+    if (options.length && !options.some((o) => o._id === adding)) setAdding(options[0]._id);
+    else if (!options.length && adding) setAdding("");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [options]);
 
   const add = async () => {
     if (!adding) return;
@@ -103,7 +111,7 @@ export default function LeadWebinars({ lead, allWebinars, onChange }) {
               { value: "", label: "Add another Zoom meeting…" },
               ...options.map((w, i) => ({
                 value: w._id,
-                label: `${w.title} · ${fmtDate(w.scheduledAt)}${i === 0 ? "  (latest)" : ""}`,
+                label: `${w.title} · ${fmtDate(w.scheduledAt)}${i === 0 ? "  (next up)" : ""}`,
               })),
             ]}
           />
