@@ -487,9 +487,6 @@ export default function LeadDetail() {
                   placeholder="e.g. 2000"
                   className="w-full mt-1 rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
                 />
-                <span className="block text-xs text-gray-400 mt-1">
-                  Amount collected to reserve their seat (max ₹10,000). Shows on the dashboard.
-                </span>
               </label>
             )}
             {nextStatus === "event_interested" && lead.seatBooking && (
