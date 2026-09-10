@@ -27,6 +27,10 @@ export default function IfoFormModal({ open, onClose, onSaved, ifo, presetLead }
   const [form, setForm] = useState({});
   const [valueTouched, setValueTouched] = useState(false);
   const [busy, setBusy] = useState(false);
+  // Converting is a one-way door for a salesperson (only a manager can reverse
+  // it). When the flow was kicked off from a stage change / Kanban drop, make
+  // them confirm before the form opens so a stray click can't create a sale.
+  const [confirmed, setConfirmed] = useState(false);
 
   // Initialise the form only when the modal opens (or the target conversion
   // changes) — NOT on every re-render of the parent. The lead detail page polls
@@ -35,6 +39,7 @@ export default function IfoFormModal({ open, onClose, onSaved, ifo, presetLead }
   // resetting the type back to IFO).
   useEffect(() => {
     if (!open) return;
+    setConfirmed(false);
     setLead(
       ifo?.lead
         ? { _id: ifo.lead._id, name: ifo.lead.name }
@@ -98,23 +103,48 @@ export default function IfoFormModal({ open, onClose, onSaved, ifo, presetLead }
 
   const type = form.conversionType || "ifo";
   const outstanding = (Number(form.dealValue) || 0) - (Number(form.amountPaid) || 0);
+  const needsConfirm = !editing && !!presetLead && !confirmed;
 
   return (
     <Modal
       open={open}
       onClose={onClose}
-      title={editing ? "Edit conversion details" : "Record conversion"}
+      title={needsConfirm ? "Convert this lead?" : editing ? "Edit conversion details" : "Record conversion"}
+      size={needsConfirm ? "sm" : undefined}
       footer={
-        <>
-          <Button variant="secondary" onClick={onClose} disabled={busy}>
-            Cancel
-          </Button>
-          <Button onClick={submit} disabled={busy}>
-            {busy ? "Saving…" : editing ? "Save" : "Record conversion"}
-          </Button>
-        </>
+        needsConfirm ? (
+          <>
+            <Button variant="secondary" onClick={onClose} disabled={busy}>
+              Cancel
+            </Button>
+            <Button onClick={() => setConfirmed(true)} disabled={busy}>
+              Yes, record a sale
+            </Button>
+          </>
+        ) : (
+          <>
+            <Button variant="secondary" onClick={onClose} disabled={busy}>
+              Cancel
+            </Button>
+            <Button onClick={submit} disabled={busy}>
+              {busy ? "Saving…" : editing ? "Save" : "Record conversion"}
+            </Button>
+          </>
+        )
       }
     >
+      {needsConfirm ? (
+        <div className="space-y-3 text-sm">
+          <p className="text-gray-700">
+            This marks <b className="text-gray-900">{presetLead.name}</b>
+            {presetLead.restaurantName ? ` (${presetLead.restaurantName})` : ""} as a paying client.
+          </p>
+          <p className="rounded-lg bg-amber-50 border border-amber-200 px-3 py-2 text-amber-800">
+            Once recorded, you can’t move this lead again or undo the sale yourself — only a manager can
+            reverse a conversion. Make sure the deal is actually closed.
+          </p>
+        </div>
+      ) : (
       <div className="space-y-4">
         {!editing && !presetLead && (
           <div>
@@ -217,6 +247,7 @@ export default function IfoFormModal({ open, onClose, onSaved, ifo, presetLead }
           placeholder="Instalment plan, terms, anything worth recording…"
         />
       </div>
+      )}
     </Modal>
   );
 }
