@@ -2,6 +2,14 @@ import { asyncHandler } from "../utils/asyncHandler.js";
 import { scopedLeadIds } from "../utils/scopedLeadIds.js";
 import Webinar from "../models/Webinar.js";
 import Remark from "../models/Remark.js";
+import Lead from "../models/Lead.js";
+import { LEAD_STATUS_LABELS } from "../utils/labels.js";
+
+// A lead sitting at these stages, once ticked "attended" for a Zoom, is
+// auto-advanced to "webinar_attended" — attendance IS the signal. A lead
+// further along (event_*, course_interested, converted) or already at
+// webinar_attended (e.g. a 2nd-Zoom re-run) is left exactly where it is.
+const ADVANCE_ON_ZOOM = ["new", "webinar_interested"];
 
 // Webinars are company-wide (not role-scoped) — every user sees the same list.
 // Only admin/manager create/edit them; anyone can manage registrations for
@@ -134,9 +142,30 @@ export const setAttendance = asyncHandler(async (req, res) => {
     res.status(404);
     throw new Error("Registration not found.");
   }
+  const wasAttended = reg.attended;
   reg.attended = !!req.body.attended;
   await webinar.save();
-  res.json({ _id: reg._id, attended: reg.attended });
+
+  // Ticking "attended" moves an early-stage lead straight to "Zoom 1 Attended".
+  let advancedTo = null;
+  if (reg.attended && !wasAttended) {
+    const lead = await Lead.findById(reg.lead);
+    if (lead && ADVANCE_ON_ZOOM.includes(lead.status)) {
+      const from = lead.status;
+      lead.status = "webinar_attended";
+      lead.statusRevertable = true; // an accidental tick can be undone
+      await lead.save(); // pre-save hook stamps statusHistory + statusChangedAt
+      await Remark.create({
+        lead: lead._id,
+        author: req.user._id,
+        type: "status_change",
+        text: `Status changed: ${LEAD_STATUS_LABELS[from] || from} → ${LEAD_STATUS_LABELS.webinar_attended} — marked attended for "${webinar.title}".`,
+      });
+      advancedTo = lead.status;
+    }
+  }
+
+  res.json({ _id: reg._id, attended: reg.attended, leadStatus: advancedTo });
 });
 
 // @route DELETE /api/webinars/:id/registrations/:regId
