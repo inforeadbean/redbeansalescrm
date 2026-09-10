@@ -11,6 +11,7 @@ import Lead, { LEAD_STATUSES, LEAD_SOURCES, LEAD_CLOSED } from "../models/Lead.j
 import Remark from "../models/Remark.js";
 import Reminder from "../models/Reminder.js";
 import IfoConversion from "../models/IfoConversion.js";
+import EventBooking from "../models/EventBooking.js";
 import Webinar from "../models/Webinar.js";
 import { LEAD_STATUS_LABELS } from "../utils/labels.js";
 
@@ -215,6 +216,10 @@ export const getLead = asyncHandler(async (req, res) => {
       out.nextInstallmentNote = conv.nextInstallmentNote || null;
     }
   }
+
+  const booking = await EventBooking.findOne({ lead: lead._id }).sort("-createdAt").lean();
+  if (booking) out.seatBooking = { amount: booking.amount, at: booking.createdAt };
+
   res.json({ lead: out, remarks });
 });
 
@@ -416,12 +421,14 @@ export const updateLead = asyncHandler(async (req, res) => {
   res.json(await lead.populate("assignedTo", "name"));
 });
 
-// @route PATCH /api/leads/:id/status   { status, note?, lostReason?, nextFollowUpDate? }
+// @route PATCH /api/leads/:id/status
+//   { status, note?, lostReason?, nextFollowUpDate?, seatBookingAmount?, eventId? }
 // The status stepper (detail page) and the Kanban both come through here and
 // both prompt for an optional remark — so every stage change leaves a trail of
-// what changed and why.
+// what changed and why. Moving to "event_interested" can also carry a seat
+// booking fee.
 export const updateLeadStatus = asyncHandler(async (req, res) => {
-  const { status, note, lostReason, nextFollowUpDate } = req.body;
+  const { status, note, lostReason, nextFollowUpDate, seatBookingAmount, eventId } = req.body;
   if (!LEAD_STATUSES.includes(status)) {
     res.status(400);
     throw new Error(`status must be one of: ${LEAD_STATUSES.join(", ")}`);
@@ -465,6 +472,23 @@ export const updateLeadStatus = asyncHandler(async (req, res) => {
   if (from !== status) lead.statusRevertable = true;
   await lead.save();
   if (nextFollowUpDate !== undefined) await syncFollowUpReminder(lead, req.user._id);
+
+  // Seat booking fee, collected when a lead crosses into "Interested for event"
+  // (once per lead — a re-transition doesn't re-charge).
+  let seatBooked = 0;
+  const amt = Number(seatBookingAmount);
+  if (status === "event_interested" && from !== "event_interested" && amt > 0) {
+    if (!(await EventBooking.exists({ lead: lead._id }))) {
+      await EventBooking.create({
+        lead: lead._id,
+        event: eventId || undefined,
+        amount: amt,
+        collectedBy: req.user._id,
+      });
+      await logRemark(lead._id, req.user._id, `Event seat booking collected: ${inr(amt)}.`, "payment");
+      seatBooked = amt;
+    }
+  }
 
   if (removedConversion) {
     await logRemark(
@@ -569,6 +593,7 @@ export const deleteLead = asyncHandler(async (req, res) => {
     Remark.deleteMany({ lead: lead._id }),
     Reminder.deleteMany({ lead: lead._id }),
     IfoConversion.deleteMany({ lead: lead._id }),
+    EventBooking.deleteMany({ lead: lead._id }),
   ]);
   await lead.deleteOne();
   res.json({ message: "Lead deleted." });

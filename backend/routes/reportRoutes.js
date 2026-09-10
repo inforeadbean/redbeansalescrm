@@ -12,12 +12,13 @@ import { protect, authorize } from "../middleware/authMiddleware.js";
 const router = express.Router();
 router.use(protect);
 
-// Management reports; the leaderboard is for everyone.
+// All management-only — the leaderboard was company-wide, but salespeople no
+// longer see it (2026-09-10).
 router.get("/five-for-three", authorize("admin", "manager"), getFiveForThree);
 router.get("/calling", authorize("admin", "manager"), getCallingReport);
 router.get("/funnel", authorize("admin", "manager"), getFunnel);
 router.get("/receivables", authorize("admin", "manager"), getReceivables);
 router.get("/payment-delays", authorize("admin", "manager"), getPaymentDelays);
-router.get("/leaderboard", getLeaderboard);
+router.get("/leaderboard", authorize("admin", "manager"), getLeaderboard);
 
 export default router;

@@ -52,7 +52,7 @@ const SECTIONS = [
       { to: "/reports/funnel", label: "Funnel", icon: MdOutlineFilterAlt, roles: MGR },
       { to: "/reports/receivables", label: "Receivables", icon: MdOutlinePayments, roles: MGR },
       { to: "/reports/payment-delays", label: "Payment Delays", icon: MdOutlineRunningWithErrors, roles: MGR },
-      { to: "/leaderboard", label: "Leaderboard", icon: MdOutlineLeaderboard },
+      { to: "/leaderboard", label: "Leaderboard", icon: MdOutlineLeaderboard, roles: MGR },
     ],
   },
   {

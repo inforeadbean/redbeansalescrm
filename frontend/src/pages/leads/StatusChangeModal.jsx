@@ -5,7 +5,7 @@ import Badge from "../../components/ui/Badge.jsx";
 import { Input, Textarea } from "../../components/ui/Field.jsx";
 import { useToast } from "../../context/ToastContext.jsx";
 import { LEAD_STATUS } from "../../utils/constants.js";
-import { fmtDate } from "../../utils/format.js";
+import { fmtDate, inr } from "../../utils/format.js";
 import { updateLeadStatus } from "../../services/leadService.js";
 import { listWebinars, addRegistrations } from "../../services/webinarService.js";
 import { listEvents, addInvitees } from "../../services/eventService.js";
@@ -39,6 +39,7 @@ export default function StatusChangeModal({ open, onClose, lead, toStatus, onDon
   const toast = useToast();
   const [note, setNote] = useState("");
   const [followUp, setFollowUp] = useState("");
+  const [seatAmount, setSeatAmount] = useState("");
   const [busy, setBusy] = useState(false);
   const [sessions, setSessions] = useState([]);
   const [sessionId, setSessionId] = useState("");
@@ -49,6 +50,7 @@ export default function StatusChangeModal({ open, onClose, lead, toStatus, onDon
   useEffect(() => {
     if (!open) return;
     setNote("");
+    setSeatAmount("");
     setFollowUp(lead?.nextFollowUpDate ? lead.nextFollowUpDate.slice(0, 10) : "");
   }, [open, lead]);
 
@@ -84,6 +86,9 @@ export default function StatusChangeModal({ open, onClose, lead, toStatus, onDon
         note: note.trim() || undefined,
         lostReason: negative ? note.trim() || undefined : undefined,
         nextFollowUpDate: followUp || undefined,
+        seatBookingAmount:
+          toStatus === "event_interested" && Number(seatAmount) > 0 ? Number(seatAmount) : undefined,
+        eventId: toStatus === "event_interested" ? sessionId || undefined : undefined,
       });
       // Best-effort: register / invite the lead for the picked session. A
       // failure here only warns — the stage change is already saved.
@@ -157,6 +162,24 @@ export default function StatusChangeModal({ open, onClose, lead, toStatus, onDon
               <span className="block text-xs text-gray-400 mt-1">{sessionCfg.hint}</span>
             </label>
           ))}
+
+        {toStatus === "event_interested" && !lead?.seatBooking && (
+          <Input
+            label="Event seat booking (₹)"
+            hint="Optional — amount collected to reserve their seat. Shows on the dashboard."
+            type="number"
+            min="0"
+            inputMode="numeric"
+            placeholder="e.g. 2000"
+            value={seatAmount}
+            onChange={(e) => setSeatAmount(e.target.value)}
+          />
+        )}
+        {toStatus === "event_interested" && lead?.seatBooking && (
+          <p className="text-xs font-semibold text-emerald-700">
+            Seat already booked — {inr(lead.seatBooking.amount)} collected.
+          </p>
+        )}
 
         <Textarea
           label="Remark"

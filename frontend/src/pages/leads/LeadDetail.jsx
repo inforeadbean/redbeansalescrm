@@ -67,6 +67,7 @@ export default function LeadDetail() {
   const [note, setNote] = useState("");
   const [statusNote, setStatusNote] = useState("");
   const [statusFollowUp, setStatusFollowUp] = useState("");
+  const [seatAmount, setSeatAmount] = useState("");
   const [nextStatus, setNextStatus] = useState("");
   const [busy, setBusy] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
@@ -201,6 +202,9 @@ export default function LeadDetail() {
         note: statusNote.trim() || undefined,
         lostReason: CLOSED_NEGATIVE.includes(nextStatus) ? statusNote.trim() : undefined,
         nextFollowUpDate: statusFollowUp || undefined,
+        seatBookingAmount:
+          nextStatus === "event_interested" && Number(seatAmount) > 0 ? Number(seatAmount) : undefined,
+        eventId: nextStatus === "event_interested" ? sessionId || undefined : undefined,
       });
       // Moving to "Interested for webinar/event" also drops the lead onto that
       // session's list (writes a timeline note; doesn't move the status again).
@@ -217,6 +221,7 @@ export default function LeadDetail() {
       }
       setStatusNote("");
       setStatusFollowUp("");
+      setSeatAmount("");
       toast.success("Stage updated.");
       await reload();
     } catch (err) {
@@ -387,6 +392,12 @@ export default function LeadDetail() {
               )}
               <Meta label="Next follow-up" value={lead.nextFollowUpDate ? fmtDate(lead.nextFollowUpDate) : "—"} />
               <Meta label="Added" value={fmtDate(lead.createdAt)} />
+              {lead.seatBooking && (
+                <Meta
+                  label="Event seat booking"
+                  value={<span className="text-emerald-700 font-semibold">{inr(lead.seatBooking.amount)}</span>}
+                />
+              )}
             </div>
             {CLOSED_NEGATIVE.includes(lead.status) && lead.lostReason && (
               <p className="mt-3 text-xs text-gray-600 bg-gray-100 rounded-lg px-3 py-2">
@@ -459,6 +470,30 @@ export default function LeadDetail() {
                   </select>
                 )}
               </label>
+            )}
+            {nextStatus === "event_interested" && !lead.seatBooking && (
+              <label className="block mb-3">
+                <span className="text-xs font-semibold text-gray-500">
+                  Event seat booking (₹) — optional
+                </span>
+                <input
+                  type="number"
+                  min="0"
+                  inputMode="numeric"
+                  value={seatAmount}
+                  onChange={(e) => setSeatAmount(e.target.value)}
+                  placeholder="e.g. 2000"
+                  className="w-full mt-1 rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                />
+                <span className="block text-xs text-gray-400 mt-1">
+                  Amount collected to reserve their seat. Shows on the dashboard.
+                </span>
+              </label>
+            )}
+            {nextStatus === "event_interested" && lead.seatBooking && (
+              <p className="mb-3 text-xs font-semibold text-emerald-700">
+                Seat already booked — {inr(lead.seatBooking.amount)} collected.
+              </p>
             )}
             <textarea
               value={statusNote}

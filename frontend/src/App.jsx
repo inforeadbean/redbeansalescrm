@@ -46,12 +46,12 @@ export default function App() {
           <Route path="/events" element={<EventsList />} />
           <Route path="/events/:id" element={<EventDetail />} />
           <Route path="/ifo" element={<IfoList />} />
-          <Route path="/leaderboard" element={<Leaderboard />} />
           <Route path="/settings" element={<Settings />} />
 
           <Route element={<ProtectedRoute allowedRoles={MANAGERS} />}>
             <Route path="/sales-team" element={<SalesTeamList />} />
             <Route path="/targets" element={<TargetsList />} />
+            <Route path="/leaderboard" element={<Leaderboard />} />
             <Route path="/reports/calling" element={<CallingReport />} />
             <Route path="/report" element={<PerformanceReport />} />
             <Route path="/reports/funnel" element={<FunnelReport />} />

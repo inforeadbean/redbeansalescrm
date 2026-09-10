@@ -4,10 +4,10 @@ import {
   MdOutlineAssignment,
   MdTrendingUp,
   MdOutlineMonetizationOn,
-  MdEmojiEvents,
   MdPhone,
   MdVideocam,
   MdEvent,
+  MdEventSeat,
   MdChevronRight,
 } from "react-icons/md";
 import PageHeader from "../../components/PageHeader.jsx";
@@ -57,16 +57,16 @@ export default function SalesDashboard() {
     <div>
       <PageHeader title={`Hi ${firstName(user.name)}`} subtitle={`Your pipeline for ${MONTHS[new Date().getMonth()]}.`} />
 
-      <div className="grid grid-cols-2 xl:grid-cols-4 gap-4 mb-5">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-5">
         <StatCard label="My leads" value={summary.totalLeads} icon={MdOutlineAssignment} hint={`${summary.openFollowUps} follow-ups due`} />
         <StatCard label="Conversion rate" value={`${summary.conversionRate}%`} icon={MdTrendingUp} hint={`${summary.converted} won`} />
         <StatCard label="My revenue" value={inrCompact(summary.totalRevenue)} icon={MdOutlineMonetizationOn} hint={`${summary.totalConversions} conversions`} />
         <StatCard
-          label="Leaderboard rank"
-          value={summary.myRank ? `#${summary.myRank}` : "—"}
-          icon={MdEmojiEvents}
-          accent="text-amber-500"
-          hint={summary.teamSize ? `of ${summary.teamSize} · ${summary.myScore} pts` : ""}
+          label="Seat bookings"
+          value={inrCompact(summary.seatBookings || 0)}
+          icon={MdEventSeat}
+          accent="text-emerald-600"
+          hint={`${summary.seatBookingCount || 0} in last 30 days`}
         />
       </div>
 

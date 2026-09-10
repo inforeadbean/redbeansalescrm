@@ -6,6 +6,7 @@ import Call from "../models/Call.js";
 import Webinar from "../models/Webinar.js";
 import Event from "../models/Event.js";
 import IfoConversion from "../models/IfoConversion.js";
+import EventBooking from "../models/EventBooking.js";
 import User from "../models/User.js";
 import { convertedLeadStages } from "../utils/convertedOnly.js";
 import { istDate, istMonthRange } from "../utils/istTime.js";
@@ -64,10 +65,11 @@ export const getSummary = asyncHandler(async (req, res) => {
   const lf = await leadScope(req.user, personId);
   const iff = await activityScope(req.user, "convertedBy", personId);
   const callF = await activityScope(req.user, "calledBy", personId);
+  const bookF = await activityScope(req.user, "collectedBy", personId);
 
   if (req.user.role === "salesperson") {
     const win = daysAgo(30);
-    const [totalLeads, converted, pipelineAgg, ifoAll, ifo30, openFollowUps] = await Promise.all([
+    const [totalLeads, converted, pipelineAgg, ifoAll, ifo30, openFollowUps, seatAgg] = await Promise.all([
       Lead.countDocuments(lf),
       Lead.countDocuments({ ...lf, status: "converted" }),
       Lead.aggregate([
@@ -81,6 +83,10 @@ export const getSummary = asyncHandler(async (req, res) => {
         { $group: { _id: null, v: { $sum: "$dealValue" }, c: { $sum: 1 } } },
       ]),
       Lead.countDocuments({ ...lf, status: { $nin: LEAD_CLOSED }, nextFollowUpDate: { $lte: new Date() } }),
+      EventBooking.aggregate([
+        { $match: { ...bookF, createdAt: { $gte: win } } },
+        { $group: { _id: null, v: { $sum: "$amount" }, c: { $sum: 1 } } },
+      ]),
     ]);
     const peers = await scopedSalespeople({ role: "admin" });
     const board = await buildLeaderboard(peers, { from: win });
@@ -95,6 +101,8 @@ export const getSummary = asyncHandler(async (req, res) => {
       recentRevenue: ifo30[0]?.v || 0,
       recentConversions: ifo30[0]?.c || 0,
       openFollowUps,
+      seatBookings: seatAgg[0]?.v || 0,
+      seatBookingCount: seatAgg[0]?.c || 0,
       myRank: me?.rank || null,
       myScore: me?.score || 0,
       teamSize: board.length,
@@ -105,7 +113,7 @@ export const getSummary = asyncHandler(async (req, res) => {
   // `range` is a { $gte, $lt } window, or null for all-time (no date filter).
   const on = (field) => (range ? { [field]: range } : {});
 
-  const [statusRows, monthLeads, meetings, ifoMonth, pipelineAgg, ifoAll, openFollowUps] =
+  const [statusRows, monthLeads, meetings, ifoMonth, pipelineAgg, ifoAll, openFollowUps, seatMonth, seatAll] =
     await Promise.all([
       Lead.aggregate([
         { $match: { ...lf, ...on("createdAt") } },
@@ -148,6 +156,11 @@ export const getSummary = asyncHandler(async (req, res) => {
         },
       ]),
       Lead.countDocuments({ ...lf, status: { $nin: LEAD_CLOSED }, nextFollowUpDate: { $lte: new Date() } }),
+      EventBooking.aggregate([
+        { $match: { ...bookF, ...on("createdAt") } },
+        { $group: { _id: null, v: { $sum: "$amount" }, c: { $sum: 1 } } },
+      ]),
+      EventBooking.aggregate([{ $match: bookF }, { $group: { _id: null, v: { $sum: "$amount" }, c: { $sum: 1 } } }]),
     ]);
 
   const byStatus = Object.fromEntries(statusRows.map((r) => [r._id, r.c]));
@@ -166,12 +179,16 @@ export const getSummary = asyncHandler(async (req, res) => {
     clientsUnpaid: ifoMonth[0]?.unpaid || 0,
     revenue,
     collected: ifoMonth[0]?.collected || 0,
+    seatBookings: seatMonth[0]?.v || 0,
+    seatBookingCount: seatMonth[0]?.c || 0,
     conversionRatio: meetingsCount ? Math.round((clients / meetingsCount) * 1000) / 10 : 0,
     avgSale: clients ? Math.round(revenue / clients) : 0,
     // all-time context
     pipelineValue: sum(pipelineAgg),
     totalRevenue: ifoAll[0]?.v || 0,
     totalCollected: ifoAll[0]?.collected || 0,
+    totalSeatBookings: seatAll[0]?.v || 0,
+    totalSeatBookingCount: seatAll[0]?.c || 0,
     totalConversions: ifoAll[0]?.c || 0,
     totalUnpaid: ifoAll[0]?.unpaid || 0,
     openFollowUps,

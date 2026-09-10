@@ -8,6 +8,7 @@ import {
   MdOutlineMonetizationOn,
   MdOutlineFilterAlt,
   MdEmojiEvents,
+  MdEventSeat,
   MdOutlineInsights,
 } from "react-icons/md";
 import PageHeader from "../../components/PageHeader.jsx";
@@ -154,7 +155,7 @@ export default function ExecutiveDashboard({ title, subtitle }) {
       ) : (
         <>
           <SectionLabel hint={`Showing ${periodLabel}`}>{periodNoun}</SectionLabel>
-          <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-3">
+          <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-3">
             <StatCard label={leadsStatLabel} value={core.summary.monthLeads} icon={MdOutlineAssignment} to={leadsInMonth()} state={fromDash} />
             <StatCard label="First meetings" value={core.summary.meetings} icon={MdOutlineGroups} hint="unique leads met" to="/calls" state={fromDash} />
             <StatCard
@@ -167,6 +168,13 @@ export default function ExecutiveDashboard({ title, subtitle }) {
               state={fromDash}
             />
             <StatCard label="Conversion ratio" value={`${core.summary.conversionRatio}%`} icon={MdTrendingUp} hint="meetings → clients" />
+            <StatCard
+              label="Seat bookings"
+              value={inrCompact(core.summary.seatBookings || 0)}
+              icon={MdEventSeat}
+              accent="text-emerald-600"
+              hint={`${core.summary.seatBookingCount || 0} this period · ${inrCompact(core.summary.totalSeatBookings || 0)} all-time`}
+            />
             <StatCard
               label="Revenue"
               value={inrCompact(core.summary.revenue)}
