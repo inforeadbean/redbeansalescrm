@@ -160,9 +160,20 @@ export default function ImportLeadsModal({ open, onClose, onSaved }) {
     return dupes;
   }, [rows]);
 
+  // A phone that's present but isn't a clean 10-digit number — the backend
+  // skips these, so flag them in the preview too.
+  const isTenDigits = (p) => (p || "").replace(/\D/g, "").length === 10;
+  const badPhone = useMemo(() => {
+    const bad = new Set();
+    rows.forEach((r, i) => {
+      if (r.phone.trim() && !isTenDigits(r.phone)) bad.add(i);
+    });
+    return bad;
+  }, [rows]);
+
   const valid = useMemo(
-    () => rows.filter((r, i) => r.phone.trim() && !fileDupes.has(i)),
-    [rows, fileDupes]
+    () => rows.filter((r, i) => r.phone.trim() && isTenDigits(r.phone) && !fileDupes.has(i)),
+    [rows, fileDupes, badPhone]
   );
   const noPhone = rows.filter((r) => !r.phone.trim()).length;
 
@@ -212,13 +223,15 @@ export default function ImportLeadsModal({ open, onClose, onSaved }) {
       );
       const dupes = res.skipped?.filter((s) => s.type === "duplicate").length || 0;
       const blank = res.skipped?.filter((s) => s.type === "no_phone").length || 0;
+      const badNum = res.skipped?.filter((s) => s.type === "bad_phone").length || 0;
+      const parts = [
+        blank && `${blank} without a phone`,
+        badNum && `${badNum} with an invalid phone`,
+        dupes && `${dupes} duplicate${dupes === 1 ? "" : "s"}`,
+      ].filter(Boolean);
       toast.success(
         `Imported ${res.created} lead${res.created === 1 ? "" : "s"}.` +
-          (res.skippedCount
-            ? ` Skipped ${res.skippedCount} — ${blank} without a phone, ${dupes} duplicate${
-                dupes === 1 ? "" : "s"
-              }.`
-            : "")
+          (res.skippedCount ? ` Skipped ${res.skippedCount} — ${parts.join(", ")}.` : "")
       );
       onSaved?.();
       onClose();
@@ -310,6 +323,11 @@ export default function ImportLeadsModal({ open, onClose, onSaved }) {
                   <MdError size={16} /> {noPhone} without a phone
                 </span>
               )}
+              {badPhone.size > 0 && (
+                <span className="inline-flex items-center gap-1 text-amber-600">
+                  <MdError size={16} /> {badPhone.size} invalid phone{badPhone.size === 1 ? "" : "s"}
+                </span>
+              )}
               {fileDupes.size > 0 && (
                 <span className="inline-flex items-center gap-1 text-amber-600">
                   <MdError size={16} /> {fileDupes.size} duplicate{fileDupes.size === 1 ? "" : "s"} in file
@@ -317,8 +335,9 @@ export default function ImportLeadsModal({ open, onClose, onSaved }) {
               )}
             </div>
             <p className="text-xs text-gray-400 -mt-2">
-              Rows without a phone or repeated in the file are skipped. Leads already in the CRM (any
-              salesperson) are matched by phone and skipped too — you'll get the exact count after import.
+              Rows with no phone, a phone that isn't 10 digits, or one repeated in the file are skipped.
+              Leads already in the CRM (any salesperson) are matched by phone and skipped too — you'll get
+              the exact count after import.
             </p>
 
             <div className="max-h-52 overflow-auto rounded-lg border border-gray-200">
@@ -334,13 +353,14 @@ export default function ImportLeadsModal({ open, onClose, onSaved }) {
                 </thead>
                 <tbody className="divide-y divide-gray-100">
                   {rows.slice(0, 50).map((r, i) => {
-                    const skip = !r.phone.trim() || fileDupes.has(i);
+                    const skip = !r.phone.trim() || fileDupes.has(i) || badPhone.has(i);
                     return (
                       <tr key={i} className={skip ? "bg-amber-50/60 text-gray-400" : ""}>
                         <td className="px-2 py-1 whitespace-nowrap">{r.name || "—"}</td>
                         <td className="px-2 py-1 whitespace-nowrap">
                           {r.phone || "missing"}
                           {fileDupes.has(i) && <span className="text-amber-600"> · duplicate</span>}
+                          {badPhone.has(i) && <span className="text-amber-600"> · not 10 digits</span>}
                         </td>
                         <td className="px-2 py-1 whitespace-nowrap">{r.location || "—"}</td>
                         <td className="px-2 py-1 max-w-[180px] truncate" title={r.remarks}>{r.remarks || "—"}</td>

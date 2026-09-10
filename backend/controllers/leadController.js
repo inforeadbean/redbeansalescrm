@@ -84,6 +84,22 @@ async function logRemark(leadId, author, text, type = "note") {
   return Remark.create({ lead: leadId, author, text, type });
 }
 
+// An existing lead (any owner) with this phone — the CRM keeps one row per
+// number, so the "New lead" form / edit rejects a duplicate. Matches on the
+// normalised 10-digit number; `excludeId` skips the lead being edited.
+async function findLeadByPhone(phone, excludeId) {
+  const digits = phoneDigits(phone);
+  if (digits.length !== 10) return null;
+  const q = { phone: digits };
+  if (excludeId) q._id = { $ne: excludeId };
+  return Lead.findOne(q).populate("assignedTo", "name").lean();
+}
+
+const dupePhoneMessage = (dup) =>
+  `This number is already in the CRM — "${dup.name}"${
+    dup.assignedTo?.name ? `, owned by ${dup.assignedTo.name}` : ""
+  }. Open that lead instead of adding it again.`;
+
 // @route GET /api/leads   (?view=kanban groups by status instead of paging)
 export const listLeads = asyncHandler(async (req, res) => {
   const filter = await scopedFilter(req);
@@ -235,6 +251,12 @@ export const createLead = asyncHandler(async (req, res) => {
     throw new Error("Phone number must be exactly 10 digits.");
   }
 
+  const dup = await findLeadByPhone(phone);
+  if (dup) {
+    res.status(409);
+    throw new Error(dupePhoneMessage(dup));
+  }
+
   // A salesperson can only ever create leads owned by themselves.
   let assignedTo = req.body.assignedTo || req.user._id;
   if (req.user.role === "salesperson") assignedTo = req.user._id;
@@ -343,6 +365,11 @@ export const bulkCreateLeads = asyncHandler(async (req, res) => {
       skipped.push({ row: i + 1, name, reason: "No phone number", type: "no_phone" });
       continue;
     }
+    if (!isTenDigits(phone)) {
+      skipped.push({ row: i + 1, name, reason: "Phone isn't a 10-digit number", type: "bad_phone" });
+      continue;
+    }
+    const digits = phoneDigits(phone);
     const key = phoneKey(phone);
     if (key) {
       if (known.has(key)) {
@@ -363,8 +390,8 @@ export const bulkCreateLeads = asyncHandler(async (req, res) => {
     }
 
     const lead = await Lead.create({
-      name: name || phone,
-      phone,
+      name: name || digits,
+      phone: digits,
       city: location,
       source: "other",
       status: "new",
@@ -413,6 +440,13 @@ export const updateLead = asyncHandler(async (req, res) => {
   if (req.body.phone !== undefined && !isTenDigits(req.body.phone)) {
     res.status(400);
     throw new Error("Phone number must be exactly 10 digits.");
+  }
+  if (req.body.phone !== undefined && phoneDigits(req.body.phone) !== lead.phone) {
+    const dup = await findLeadByPhone(req.body.phone, lead._id);
+    if (dup) {
+      res.status(409);
+      throw new Error(dupePhoneMessage(dup));
+    }
   }
   for (const key of editable) if (req.body[key] !== undefined) lead[key] = req.body[key];
   if (req.body.phone !== undefined) lead.phone = phoneDigits(req.body.phone);
