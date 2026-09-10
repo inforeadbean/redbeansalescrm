@@ -445,7 +445,7 @@ export const updateLeadStatus = asyncHandler(async (req, res) => {
   // back is re-added.) Follow-up is the "stalled" bay — moving to it, or a
   // Follow-up lead anywhere, is always fine.
   if (from !== status) {
-    const blocked = moveBlocked(from, status);
+    const blocked = moveBlocked(from, status, lead.statusHistory);
     if (blocked) {
       res.status(403);
       throw new Error(blocked);

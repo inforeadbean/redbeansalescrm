@@ -413,7 +413,7 @@ export default function LeadDetail() {
           <h3 className="font-bold text-gray-900 mb-3">Move stage</h3>
             <div className="flex flex-wrap gap-2 mb-3">
               {LEAD_STATUS_ORDER.map((s) => {
-                const blocked = moveBlocked(lead.status, s);
+                const blocked = moveBlocked(lead.status, s, lead.statusHistory);
                 const selected = nextStatus === s;
                 return (
                   <button
@@ -434,9 +434,11 @@ export default function LeadDetail() {
                 );
               })}
             </div>
-            {LEAD_STATUS_ORDER.some((s) => moveBlocked(lead.status, s)) && (
+            {LEAD_STATUS_ORDER.some((s) => moveBlocked(lead.status, s, lead.statusHistory)) && (
               <p className="mb-3 text-xs font-semibold text-amber-700">
-                Leads move forward only. If this one has stalled, move it to <b>Follow-up</b>.
+                {lead.status === "followup"
+                  ? "Leads move forward only — resume this one at the stage it reached, or move it on."
+                  : "Leads move forward only. If this one has stalled, move it to Follow-up."}
               </p>
             )}
             {prevStage && (

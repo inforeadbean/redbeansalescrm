@@ -18,7 +18,7 @@ export default function useStageChange(onChanged) {
 
   const trigger = (lead, toStatus) => {
     if (!lead || !toStatus || toStatus === lead.status) return;
-    const blocked = moveBlocked(lead.status, toStatus);
+    const blocked = moveBlocked(lead.status, toStatus, lead.statusHistory);
     if (blocked) return toast.error(blocked);
     if (toStatus === "converted") setConvertLead(lead);
     else setStatusChange({ lead, toStatus });

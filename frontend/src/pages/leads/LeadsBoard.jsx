@@ -156,7 +156,7 @@ export default function LeadsBoard() {
   const onMove = (id, status) => {
     const lead = findLead(id);
     if (!lead || lead.status === status) return;
-    const blocked = moveBlocked(lead.status, status);
+    const blocked = moveBlocked(lead.status, status, lead.statusHistory);
     if (blocked) return toast.error(blocked);
     setStatusChange({ lead, toStatus: status });
   };
@@ -172,7 +172,7 @@ export default function LeadsBoard() {
   // same flow as a Kanban drag — → Converted opens the conversion form, every
   // other move opens the remark / follow-up / session-picker modal.
   const onPickStage = (lead, toStatus) => {
-    const blocked = moveBlocked(lead.status, toStatus);
+    const blocked = moveBlocked(lead.status, toStatus, lead.statusHistory);
     if (blocked) return toast.error(blocked);
     if (toStatus === "converted") setConvertLead(lead);
     else setStatusChange({ lead, toStatus });

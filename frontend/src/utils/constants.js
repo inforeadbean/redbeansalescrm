@@ -49,6 +49,9 @@ export const FUNNEL_ORDER = [
   "converted",
 ];
 
+// Forward progress stages — FUNNEL_ORDER minus the terminal "converted".
+const FUNNEL_PROGRESS = FUNNEL_ORDER.slice(0, -1);
+
 // True when `to` is an EARLIER funnel stage than `from` (both on the funnel).
 export const isBackwardMove = (from, to) => {
   const f = FUNNEL_ORDER.indexOf(from);
@@ -56,12 +59,25 @@ export const isBackwardMove = (from, to) => {
   return f !== -1 && t !== -1 && t < f;
 };
 
+// Furthest progress stage a lead ever reached, as a FUNNEL_PROGRESS index
+// (-1 if none). `history` is the lead's statusHistory array.
+export const furthestFunnelIndex = (history) => {
+  let max = -1;
+  for (const h of Array.isArray(history) ? history : []) {
+    const i = FUNNEL_PROGRESS.indexOf(typeof h === "string" ? h : h?.status);
+    if (i > max) max = i;
+  }
+  return max;
+};
+
 // Leads move FORWARD only — for every role. Blocked: any backward funnel step,
-// any move out of "Converted", and reopening a "Dead"/"Invalid" lead.
-// `followup` is the "stalled, chase later" bay — sending a lead there, or
-// moving a Follow-up lead anywhere, is always allowed. Returns a reason
-// string, or null if the move is OK.
-export const moveBlocked = (from, to) => {
+// any move out of "Converted", reopening a "Dead"/"Invalid" lead, and dropping
+// a Follow-up lead back below the stage it had already reached. `followup` is
+// the "stalled, chase later" bay — sending a lead there is always allowed, and
+// it resumes at its furthest stage or onward, not earlier. Pass the lead's
+// `history` (statusHistory) for the Follow-up rule. Returns a reason string,
+// or null if the move is OK.
+export const moveBlocked = (from, to, history) => {
   if (!from || !to || from === to) return null;
   if (from === "converted")
     return "A converted client can't be moved back — to undo the sale, delete its conversion record.";
@@ -69,6 +85,12 @@ export const moveBlocked = (from, to) => {
     return "A dead / invalid lead can't be reopened — add it again as a new lead if it comes back.";
   if (isBackwardMove(from, to))
     return "Leads move forward only. If this one has stalled, move it to Follow-up.";
+  if (from === "followup") {
+    const toIdx = FUNNEL_PROGRESS.indexOf(to);
+    const reached = furthestFunnelIndex(history);
+    if (toIdx !== -1 && reached !== -1 && toIdx < reached)
+      return `This lead already reached "${LEAD_STATUS[FUNNEL_PROGRESS[reached]]?.label || FUNNEL_PROGRESS[reached]}" before Follow-up — move it forward from there, not back.`;
+  }
   return null;
 };
 
