@@ -28,7 +28,8 @@ export default function LeadFormModal({ open, onClose, onSaved, lead }) {
     setValue,
     formState: { errors, isSubmitting },
   } = useForm();
-  const fromWebinar = !editing && !!watch("webinar");
+  const webinarId = watch("webinar");
+  const fromWebinar = !editing && !!webinarId;
 
   useEffect(() => {
     if (!open) return;
@@ -43,6 +44,14 @@ export default function LeadFormModal({ open, onClose, onSaved, lead }) {
       setValue("webinar", webinars[0]._id, { shouldDirty: false });
     }
   }, [open, editing, webinars, setValue]);
+
+  // Keep Source in step with the Zoom link — picking / clearing a Zoom flips it
+  // to "Zoom meeting" / "Other". It's still a normal dropdown: the salesperson
+  // can then set it to Social, Referral, Cold call, etc.
+  useEffect(() => {
+    if (!open || editing) return;
+    setValue("source", webinarId ? "webinar" : "other", { shouldDirty: false });
+  }, [open, editing, webinarId, setValue]);
 
   // Populate the form only when the modal opens (or the target lead changes) —
   // the lead detail page polls in the background and re-creates the `lead`
@@ -128,8 +137,7 @@ export default function LeadFormModal({ open, onClose, onSaved, lead }) {
         <Select
           label="Source"
           options={optionsFrom(LEAD_SOURCE)}
-          disabled={fromWebinar}
-          hint={fromWebinar ? "Set to Zoom meeting automatically." : undefined}
+          hint={fromWebinar ? "From the Zoom meeting below — change if it came from elsewhere." : undefined}
           {...register("source")}
         />
         <Input
