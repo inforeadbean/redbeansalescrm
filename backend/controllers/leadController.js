@@ -13,6 +13,7 @@ import Reminder from "../models/Reminder.js";
 import IfoConversion from "../models/IfoConversion.js";
 import EventBooking from "../models/EventBooking.js";
 import Webinar from "../models/Webinar.js";
+import Event from "../models/Event.js";
 import { LEAD_STATUS_LABELS } from "../utils/labels.js";
 
 // For any converted leads in the list, pull the real numbers off their
@@ -82,6 +83,17 @@ async function findScoped(req, res) {
 
 async function logRemark(leadId, author, text, type = "note") {
   return Remark.create({ lead: leadId, author, text, type });
+}
+
+// A bad date string (or a garbled paste) hitting `lead.save()` surfaces as a
+// raw "Cast to date failed for value…" — reject it up front with something a
+// user can act on instead. Blank/undefined/null is fine (clears the date).
+function assertValidDate(res, value, label) {
+  if (value === undefined || value === null || value === "") return;
+  if (Number.isNaN(new Date(value).getTime())) {
+    res.status(400);
+    throw new Error(`${label} isn't a valid date.`);
+  }
 }
 
 // An existing lead (any owner) with this phone — the CRM keeps one row per
@@ -250,6 +262,7 @@ export const createLead = asyncHandler(async (req, res) => {
     res.status(400);
     throw new Error("Phone number must be exactly 10 digits.");
   }
+  assertValidDate(res, req.body.nextFollowUpDate, "Next follow-up date");
 
   const dup = await findLeadByPhone(phone);
   if (dup) {
@@ -441,6 +454,7 @@ export const updateLead = asyncHandler(async (req, res) => {
     res.status(400);
     throw new Error("Phone number must be exactly 10 digits.");
   }
+  assertValidDate(res, req.body.nextFollowUpDate, "Next follow-up date");
   if (req.body.phone !== undefined && phoneDigits(req.body.phone) !== lead.phone) {
     const dup = await findLeadByPhone(req.body.phone, lead._id);
     if (dup) {
@@ -466,6 +480,15 @@ export const updateLeadStatus = asyncHandler(async (req, res) => {
   if (!LEAD_STATUSES.includes(status)) {
     res.status(400);
     throw new Error(`status must be one of: ${LEAD_STATUSES.join(", ")}`);
+  }
+  assertValidDate(res, nextFollowUpDate, "Next follow-up date");
+  // Capped well above the usual ~₹2,000 ask so a fat-fingered extra zero can't
+  // post a huge "booking". Checked up front — a rejected amount must never
+  // leave the stage change half-applied.
+  const SEAT_BOOKING_MAX = 10000;
+  if (status === "event_interested" && Number(seatBookingAmount) > SEAT_BOOKING_MAX) {
+    res.status(400);
+    throw new Error(`Seat booking can't be more than ${inr(SEAT_BOOKING_MAX)}.`);
   }
   const lead = await findScoped(req, res);
   const from = lead.status;
@@ -608,12 +631,34 @@ export const undoLeadStatus = asyncHandler(async (req, res) => {
     }
   }
 
+  // If we're undoing OUT of "Zoom 1 Attended" / "Event attended", any
+  // attendance tick behind it is stale too — the pipeline is now saying this
+  // lead never really turned up, so the attendee grid shouldn't keep showing
+  // it ticked. Clears every session where this lead is marked attended.
+  let clearedAttendance = null;
+  if (mistaken === "webinar_attended") {
+    const r = await Webinar.updateMany(
+      { "registrations.lead": lead._id },
+      { $set: { "registrations.$[r].attended": false } },
+      { arrayFilters: [{ "r.lead": lead._id, "r.attended": true }] }
+    );
+    if (r.modifiedCount) clearedAttendance = "Zoom";
+  } else if (mistaken === "event_attended") {
+    const r = await Event.updateMany(
+      { "invitees.lead": lead._id },
+      { $set: { "invitees.$[i].attended": false } },
+      { arrayFilters: [{ "i.lead": lead._id, "i.attended": true }] }
+    );
+    if (r.modifiedCount) clearedAttendance = "event";
+  }
+
   const label = (s) => LEAD_STATUS_LABELS[s] || s;
   await logRemark(
     lead._id,
     req.user._id,
     `Stage change undone — "${label(mistaken)}" was a mistake, back at "${label(prev.status)}".` +
-      (removedBooking ? ` Seat booking of ${inr(removedBooking)} cancelled.` : ""),
+      (removedBooking ? ` Seat booking of ${inr(removedBooking)} cancelled.` : "") +
+      (clearedAttendance ? ` Attendance mark on the ${clearedAttendance} also cleared.` : ""),
     "status_change"
   );
 

@@ -52,7 +52,7 @@ export function moveBlocked(from, to, history) {
   if (from === "converted")
     return `A converted client can't be moved back. To undo the sale, delete its conversion record.`;
   if ((from === "dead" || from === "invalid") && to !== "dead" && to !== "invalid")
-    return `A ${LEAD_STATUS_LABELS[from] || from} lead can't be reopened — add it again as a new lead if it comes back.`;
+    return `This lead is marked ${LEAD_STATUS_LABELS[from] || from} and can't be reopened — add it again as a new lead if it comes back.`;
   if (isBackwardMove(from, to))
     return `Leads move forward only — can't go back to "${LEAD_STATUS_LABELS[to] || to}". If it has stalled, move it to Follow-up.`;
   if (from === "followup") {

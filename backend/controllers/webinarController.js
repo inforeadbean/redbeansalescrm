@@ -15,6 +15,16 @@ const ADVANCE_ON_ZOOM = ["new", "webinar_interested"];
 // Only admin/manager create/edit them; anyone can manage registrations for
 // leads they can see.
 
+// A webinar left "upcoming" past its own date is just stale data — nobody
+// flips it by hand once the session is over. Lazily correct it whenever the
+// list/detail is read, rather than needing a scheduled job.
+async function flipPastUpcoming() {
+  await Webinar.updateMany(
+    { status: "upcoming", scheduledAt: { $lt: new Date() } },
+    { $set: { status: "completed" } }
+  );
+}
+
 const listView = (w) => ({
   _id: w._id,
   title: w.title,
@@ -29,6 +39,7 @@ const listView = (w) => ({
 
 // @route GET /api/webinars
 export const listWebinars = asyncHandler(async (req, res) => {
+  await flipPastUpcoming();
   const filter = {};
   if (req.query.status) filter.status = req.query.status;
   const webinars = await Webinar.find(filter)
@@ -40,6 +51,7 @@ export const listWebinars = asyncHandler(async (req, res) => {
 
 // @route GET /api/webinars/:id — full doc with registrations populated
 export const getWebinar = asyncHandler(async (req, res) => {
+  await flipPastUpcoming();
   const webinar = await Webinar.findById(req.params.id)
     .populate("host", "name")
     .populate({ path: "registrations.lead", select: "name phone restaurantName city status assignedTo", populate: { path: "assignedTo", select: "name" } })
@@ -186,7 +198,36 @@ export const removeRegistration = asyncHandler(async (req, res) => {
     res.status(403);
     throw new Error("You can only remove your own leads from a Zoom meeting.");
   }
+  const wasAttended = !!reg?.attended;
+  const leadId = reg?.lead;
   webinar.registrations.pull({ _id: req.params.regId });
   await webinar.save();
+
+  // If that was the only Zoom this lead was ever marked attended for, and
+  // they're sitting at "Zoom 1 Attended" because of it, walk the stage back —
+  // it shouldn't keep crediting a session they're no longer on record for.
+  if (wasAttended && leadId) {
+    const lead = await Lead.findById(leadId);
+    if (lead && lead.status === "webinar_attended") {
+      const stillAttended = await Webinar.exists({
+        "registrations.lead": leadId,
+        "registrations.attended": true,
+      });
+      if (!stillAttended) {
+        const hist = lead.statusHistory || [];
+        const idx = hist.map((h) => h.status).lastIndexOf("webinar_attended");
+        const backTo = idx > 0 ? hist[idx - 1].status : "webinar_interested";
+        lead.status = backTo;
+        await lead.save();
+        await Remark.create({
+          lead: lead._id,
+          author: req.user._id,
+          type: "system",
+          text: `Removed from "${webinar.title}" — their only recorded Zoom attendance, so the stage moved back to "${LEAD_STATUS_LABELS[backTo] || backTo}".`,
+        });
+      }
+    }
+  }
+
   res.json({ message: "Registration removed." });
 });

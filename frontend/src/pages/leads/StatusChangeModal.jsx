@@ -166,9 +166,10 @@ export default function StatusChangeModal({ open, onClose, lead, toStatus, onDon
         {toStatus === "event_interested" && !lead?.seatBooking && (
           <Input
             label="Event seat booking (₹)"
-            hint="Optional — amount collected to reserve their seat. Shows on the dashboard."
+            hint="Optional — amount collected to reserve their seat (max ₹10,000). Shows on the dashboard."
             type="number"
             min="0"
+            max="10000"
             inputMode="numeric"
             placeholder="e.g. 2000"
             value={seatAmount}
