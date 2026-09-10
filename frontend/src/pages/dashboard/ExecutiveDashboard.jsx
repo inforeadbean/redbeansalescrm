@@ -212,28 +212,6 @@ export default function ExecutiveDashboard({ title, subtitle }) {
               <h3 className="font-bold text-gray-800">Pipeline funnel</h3>
               <p className="text-xs font-semibold text-gray-500 mb-3">The same leads, as a bar per stage — click to open them.</p>
               <BarList items={statusItems(core.funnel)} onItemClick={(it) => openStage(it.status)} />
-              {insights && insights.zoomAttendanceDepth.some((d) => d.leads > 0) && (
-                <div className="mt-4 pt-3 border-t border-gray-100">
-                  <p className="text-xs font-semibold text-gray-500 mb-2">
-                    Zoom 1 Attended — by number of sessions attended
-                  </p>
-                  <div className="flex flex-wrap gap-2">
-                    {insights.zoomAttendanceDepth
-                      .filter((d) => d.leads > 0)
-                      .map((d) => (
-                        <span
-                          key={d.label}
-                          className="inline-flex items-center gap-1.5 rounded-full bg-amber-50 border border-amber-200/80 pl-3 pr-2.5 py-1 text-xs font-semibold text-amber-800"
-                        >
-                          {d.label}
-                          <span className="inline-flex items-center justify-center min-w-[1.25rem] h-5 rounded-full bg-amber-100 text-amber-900 font-bold tabular-nums px-1">
-                            {d.leads}
-                          </span>
-                        </span>
-                      ))}
-                  </div>
-                </div>
-              )}
             </Card>
           </div>
 
@@ -480,6 +458,29 @@ export default function ExecutiveDashboard({ title, subtitle }) {
               />
             </Card>
           </div>
+        </>
+      )}
+
+      {insights && insights.zoomAttendanceDepth.some((d) => d.leads > 0) && (
+        <>
+          <SectionLabel>Zoom 1 Attended — by sessions attended</SectionLabel>
+          <Card>
+            <div className="flex flex-wrap gap-2">
+              {insights.zoomAttendanceDepth
+                .filter((d) => d.leads > 0)
+                .map((d) => (
+                  <span
+                    key={d.label}
+                    className="inline-flex items-center gap-1.5 rounded-full bg-amber-50 border border-amber-200/80 pl-3 pr-2.5 py-1 text-xs font-semibold text-amber-800"
+                  >
+                    {d.label}
+                    <span className="inline-flex items-center justify-center min-w-[1.25rem] h-5 rounded-full bg-amber-100 text-amber-900 font-bold tabular-nums px-1">
+                      {d.leads}
+                    </span>
+                  </span>
+                ))}
+            </div>
+          </Card>
         </>
       )}
     </div>
