@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Outlet } from "react-router-dom";
 import Sidebar from "../components/Sidebar.jsx";
 import Topbar from "../components/Topbar.jsx";
+import AskAssistant from "../components/AskAssistant.jsx";
 import { NotificationProvider } from "../context/NotificationContext.jsx";
 
 export default function DashboardLayout() {
@@ -18,6 +19,7 @@ export default function DashboardLayout() {
           </main>
         </div>
       </div>
+      <AskAssistant />
     </NotificationProvider>
   );
 }

@@ -19,6 +19,7 @@ import reminderRoutes from "./routes/reminderRoutes.js";
 import targetRoutes from "./routes/targetRoutes.js";
 import dashboardRoutes from "./routes/dashboardRoutes.js";
 import reportRoutes from "./routes/reportRoutes.js";
+import assistantRoutes from "./routes/assistantRoutes.js";
 
 // The Express app: the /api REST layer, and — in production — the built React
 // frontend served from the same origin. `server.js` connects the DB, seeds and
@@ -64,6 +65,7 @@ app.use("/api/reminders", reminderRoutes);
 app.use("/api/targets", targetRoutes);
 app.use("/api/dashboard", dashboardRoutes);
 app.use("/api/reports", reportRoutes);
+app.use("/api/assistant", assistantRoutes);
 
 // --- Serve the built frontend (single-service deploy) --------------------------
 // `npm run build` puts it in frontend/dist. In local dev you run Vite separately
