@@ -1,0 +1,60 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body {
+  @apply bg-surface text-gray-900 antialiased;
+  font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+}
+
+/* User ask (2026-09-08): "sari jagha text color dark black" — the light-grey
+   secondary text was hard to read on the near-white surface. We darken the
+   muted text utilities globally here instead of touching ~260 className
+   strings. Only the `color` property is affected; borders, backgrounds,
+   dividers and status dots keep their own gray and slate scales.
+   Higher-specificity variants (hover, disabled, placeholder) still win, so
+   disabled inputs and placeholders stay light and hover states keep working. */
+.text-gray-200, .text-slate-200 { color: #6b7280; }
+.text-gray-300, .text-slate-300 { color: #4b5563; }
+.text-gray-400, .text-slate-400 { color: #1f2937; }
+.text-gray-500, .text-slate-500 { color: #111827; }
+.text-gray-600, .text-slate-600 { color: #111827; }
+.text-gray-700, .text-slate-700 { color: #111827; }
+
+/* Numbers line up in tables and stat tiles. */
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Thin, unobtrusive scrollbars — the app has a lot of scrollable panels
+   (sidebar, tables, kanban columns) and the default OS scrollbar looks
+   out of place in a dense dashboard UI. */
+::-webkit-scrollbar {
+  width: 9px;
+  height: 9px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background-color: #d1d5db;
+  border-radius: 9999px;
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+::-webkit-scrollbar-thumb:hover {
+  background-color: #9ca3af;
+  background-clip: content-box;
+}
+
+/* Gentle entrance for toasts / modals. */
+@keyframes slidein {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}

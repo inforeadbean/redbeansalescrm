@@ -1,0 +1,30 @@
+# Dependencies
+node_modules/
+
+# Environment variables (never commit real secrets)
+.env
+.env.local
+.env.*.local
+
+# Build output
+dist/
+build/
+
+# Local dev database (mongodb-memory-server persistent data dir)
+.mongo-data/
+
+# Local DB snapshots / exports (contain data + password hashes — never commit)
+db-export/
+*.dump
+db-backup*/
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+*.log
+
+# Editor / OS
+.vscode/
+.DS_Store
+Thumbs.db

@@ -1,0 +1,39 @@
+import { LEAD_STATUS_LABELS } from "./labels.js";
+
+// The one-directional part of the pipeline (mirrors the frontend's
+// constants.js FUNNEL_ORDER). `followup` / `dead` / `invalid` sit outside it —
+// moving to those is never "backward".
+export const FUNNEL_ORDER = [
+  "new",
+  "webinar_interested",
+  "webinar_attended",
+  "event_interested",
+  "event_attended",
+  "course_interested",
+  "converted",
+];
+
+// True when both stages are on the funnel and `to` is an earlier one.
+export const isBackwardMove = (from, to) => {
+  const f = FUNNEL_ORDER.indexOf(from);
+  const t = FUNNEL_ORDER.indexOf(to);
+  return f !== -1 && t !== -1 && t < f;
+};
+
+// Leads only move FORWARD — for every role (salesperson, manager, admin).
+// Blocked: (a) any backward funnel step, (b) moving out of "Converted",
+// (c) reopening a "Dead" / "Invalid" lead. Still allowed: forward funnel steps,
+// sending any active lead to Follow-up / Dead / Invalid, and moving a
+// Follow-up lead anywhere (Follow-up is the "stalled, chase later" bay).
+// To undo a sale, a manager deletes the conversion record. A dead lead that
+// comes back is re-added as a new lead. Returns a reason string, or null.
+export function moveBlocked(from, to) {
+  if (!from || !to || from === to) return null;
+  if (from === "converted")
+    return `A converted client can't be moved back. To undo the sale, delete its conversion record.`;
+  if ((from === "dead" || from === "invalid") && to !== "dead" && to !== "invalid")
+    return `A ${LEAD_STATUS_LABELS[from] || from} lead can't be reopened — add it again as a new lead if it comes back.`;
+  if (isBackwardMove(from, to))
+    return `Leads move forward only — can't go back to "${LEAD_STATUS_LABELS[to] || to}". If it has stalled, move it to Follow-up.`;
+  return null;
+}
