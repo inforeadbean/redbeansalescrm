@@ -1,26 +1,33 @@
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { MdFileDownload, MdPictureAsPdf, MdRefresh } from "react-icons/md";
 import PageHeader from "../../components/PageHeader.jsx";
 import Card from "../../components/ui/Card.jsx";
 import Button from "../../components/ui/Button.jsx";
+import Listbox from "../../components/ui/Listbox.jsx";
 import Spinner from "../../components/ui/Spinner.jsx";
 import MonthPicker from "../../components/MonthPicker.jsx";
-import CallingReportTable from "../../components/CallingReportTable.jsx";
+import CallingReportTable, { currentWeekOfMonth } from "../../components/CallingReportTable.jsx";
 import { useToast } from "../../context/ToastContext.jsx";
 import { useLiveData } from "../../hooks/useLiveData.js";
 import { MONTHS, fmtDate, fromNow } from "../../utils/format.js";
 import { exportCSV, exportPDF } from "../../utils/exporters.js";
 import { getCallingReport } from "../../services/reportService.js";
 
+const WEEK_OPTIONS = [1, 2, 3, 4].map((w) => ({ value: w, label: `Week ${w}` }));
+
 // Flat rows for CSV / PDF — one line per (week, salesperson) + a week TOTAL,
-// then the Month Total block. One column per Zoom meeting — this report is
-// Zoom-only, event/conversion numbers live in other reports.
+// then the Month Total block. One column per Zoom meeting and per Event this
+// month — the export stays a full month dump regardless of the on-screen
+// week filter.
 const flatten = (data) => {
   if (!data) return { columns: [], rows: [] };
-  const dyn = data.meetings.map((m) => ({ h: `${m.title} (${fmtDate(m.scheduledAt)})`, bag: "zooms", key: m.webinarId }));
-  const headers = ["Section", "Name", "Leads", "Called", ...dyn.map((c) => c.h)];
+  const dyn = [
+    ...data.meetings.map((m) => ({ h: `${m.title} — Zoom (${fmtDate(m.scheduledAt)})`, bag: "zooms", key: m.webinarId })),
+    ...data.events.map((e) => ({ h: `${e.title} — Event (${fmtDate(e.date)})`, bag: "events", key: e.eventId })),
+  ];
+  const headers = ["Section", "Name", "Total Leads", "Total Called", ...dyn.map((c) => c.h)];
   const line = (section, name, src) => {
-    const r = { Section: section, Name: name, Leads: src.leads ?? 0, Called: src.called ?? 0 };
+    const r = { Section: section, Name: name, "Total Leads": src.leads ?? 0, "Total Called": src.called ?? 0 };
     dyn.forEach((c) => (r[c.h] = src[c.bag]?.[c.key] ?? 0));
     return r;
   };
@@ -36,6 +43,14 @@ export default function CallingReport() {
   const toast = useToast();
   const now = new Date();
   const [period, setPeriod] = useState({ month: now.getMonth() + 1, year: now.getFullYear() });
+  const [week, setWeek] = useState(() => Math.min(4, Math.max(1, currentWeekOfMonth(period.month, period.year) || 1)));
+
+  // Jumping to a different month: default the week filter back to whichever
+  // week makes sense for that month (current week if it's this month, else
+  // Week 1) instead of leaving it on a stale selection.
+  useEffect(() => {
+    setWeek(Math.min(4, Math.max(1, currentWeekOfMonth(period.month, period.year) || 1)));
+  }, [period.month, period.year]);
 
   // Live: same refresh model as the Sales Report — auto-updates every 20s and
   // on tab focus, no reload.
@@ -69,10 +84,11 @@ export default function CallingReport() {
     <div>
       <PageHeader
         title="Calling Sales Report"
-        subtitle="Week by week — leads, calling coverage, and Zoom attendance per salesperson."
+        subtitle="Leads, calling coverage, and Zoom/Event attendance per salesperson — pick a week up top."
         actions={
           <div className="flex items-center gap-2 flex-wrap">
             <MonthPicker value={period} onChange={setPeriod} />
+            <Listbox className="w-28" value={week} onChange={(v) => setWeek(Number(v))} options={WEEK_OPTIONS} />
             <Button variant="secondary" onClick={doCSV} disabled={!data}>
               <MdFileDownload size={16} /> CSV
             </Button>
@@ -90,8 +106,7 @@ export default function CallingReport() {
           <>
             <div className="flex items-center justify-between gap-3 mb-4 flex-wrap">
               <p className="text-sm text-gray-500">
-                Showing <b className="text-gray-700">{periodLabel}</b> — click a week to see each
-                salesperson.
+                Showing <b className="text-gray-700">{periodLabel}</b>, <b className="text-gray-700">Week {week}</b> — click the month total row to see each salesperson.
               </p>
               <div className="flex items-center gap-2 text-xs text-gray-400">
                 {error ? (
@@ -114,7 +129,7 @@ export default function CallingReport() {
                 </button>
               </div>
             </div>
-            <CallingReportTable data={data} />
+            <CallingReportTable data={data} week={week} />
           </>
         )}
       </Card>
