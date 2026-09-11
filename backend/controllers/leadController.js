@@ -14,6 +14,7 @@ import IfoConversion from "../models/IfoConversion.js";
 import EventBooking from "../models/EventBooking.js";
 import Webinar from "../models/Webinar.js";
 import Event from "../models/Event.js";
+import Call from "../models/Call.js";
 import { LEAD_STATUS_LABELS } from "../utils/labels.js";
 
 // For any converted leads in the list, pull the real numbers off their
@@ -685,12 +686,17 @@ export const deleteLead = asyncHandler(async (req, res) => {
   const lead = await findScoped(req, res);
   // Take its timeline, reminders and any conversion record with it — an
   // orphaned IfoConversion would keep counting toward revenue and client
-  // totals, and orphaned reminders would fire pointing at a dead lead.
+  // totals, orphaned reminders would fire pointing at a dead lead, and a
+  // stale registration/invitee entry would show up as a ghost "Deleted
+  // lead" row on a Zoom meeting or Event.
   await Promise.all([
     Remark.deleteMany({ lead: lead._id }),
     Reminder.deleteMany({ lead: lead._id }),
     IfoConversion.deleteMany({ lead: lead._id }),
     EventBooking.deleteMany({ lead: lead._id }),
+    Call.deleteMany({ lead: lead._id }),
+    Webinar.updateMany({ "registrations.lead": lead._id }, { $pull: { registrations: { lead: lead._id } } }),
+    Event.updateMany({ "invitees.lead": lead._id }, { $pull: { invitees: { lead: lead._id } } }),
   ]);
   await lead.deleteOne();
   res.json({ message: "Lead deleted." });
