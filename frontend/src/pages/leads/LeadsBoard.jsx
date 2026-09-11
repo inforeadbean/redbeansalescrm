@@ -1,6 +1,16 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate, useSearchParams, useLocation } from "react-router-dom";
-import { MdAdd, MdViewKanban, MdTableRows, MdSearch, MdUploadFile, MdClose, MdArrowBack } from "react-icons/md";
+import {
+  MdAdd,
+  MdViewKanban,
+  MdTableRows,
+  MdSearch,
+  MdUploadFile,
+  MdClose,
+  MdArrowBack,
+  MdFileDownload,
+  MdPictureAsPdf,
+} from "react-icons/md";
 import PageHeader from "../../components/PageHeader.jsx";
 import Card from "../../components/ui/Card.jsx";
 import Button from "../../components/ui/Button.jsx";
@@ -11,14 +21,18 @@ import Pagination from "../../components/ui/Pagination.jsx";
 import EmptyState from "../../components/ui/EmptyState.jsx";
 import KanbanBoard from "../../components/kanban/KanbanBoard.jsx";
 import LeadStageSelect from "../../components/LeadStageSelect.jsx";
+import SalespersonPicker from "../../components/SalespersonPicker.jsx";
 import LeadFormModal from "./LeadFormModal.jsx";
 import ImportLeadsModal from "./ImportLeadsModal.jsx";
 import IfoFormModal from "../ifo/IfoFormModal.jsx";
 import StatusChangeModal from "./StatusChangeModal.jsx";
 import { useToast } from "../../context/ToastContext.jsx";
+import { useAuth } from "../../context/AuthContext.jsx";
 import PeriodFilter, { periodRange } from "../../components/PeriodFilter.jsx";
 import { LEAD_STATUS, LEAD_SOURCE, optionsFrom, moveBlocked } from "../../utils/constants.js";
 import { fmtDate, inrCompact, pct } from "../../utils/format.js";
+import { exportCSV, exportPDF } from "../../utils/exporters.js";
+import { getAssignable } from "../../services/userService.js";
 import {
   listLeads,
   getKanban,
@@ -41,6 +55,8 @@ export default function LeadsBoard() {
   const nav = useNavigate();
   const toast = useToast();
   const location = useLocation();
+  const { user } = useAuth();
+  const canPickOwner = user?.role === "admin" || user?.role === "manager";
   const [searchParams, setSearchParams] = useSearchParams();
 
   const [filters, setFilters] = useState(() => {
@@ -74,6 +90,17 @@ export default function LeadsBoard() {
   const [table, setTable] = useState({ data: [], total: 0, page: 1, pages: 1 });
   const [convertLead, setConvertLead] = useState(null);
   const [statusChange, setStatusChange] = useState(null); // { lead, toStatus }
+  const [people, setPeople] = useState([]);
+  const [exporting, setExporting] = useState(false);
+
+  // The owner picker is admin/manager only — a salesperson only ever has
+  // their own leads to export, so there's nothing for them to pick.
+  useEffect(() => {
+    if (!canPickOwner) return;
+    getAssignable()
+      .then((rows) => setPeople(rows.filter((u) => u.role === "salesperson")))
+      .catch(() => {});
+  }, [canPickOwner]);
 
   // A dashboard drill-down brings its own scope (?from/?to/?open/?followup);
   // otherwise the month/period slicer applies.
@@ -330,6 +357,67 @@ export default function LeadsBoard() {
     { key: "createdAt", header: "Added", render: (l) => fmtDate(l.createdAt) },
   ];
 
+  const exportCols = [
+    "Lead", "Phone", "Brand", "City", "State", "Stage", "Source", "Owner", "Value", "Next follow-up", "Added",
+  ].map((k) => ({ key: k, header: k }));
+  const toExportRow = (l) => ({
+    Lead: l.name,
+    Phone: l.phone,
+    Brand: l.restaurantName || "—",
+    City: l.city || "—",
+    State: l.state || "—",
+    Stage: LEAD_STATUS[l.status]?.label || l.status,
+    Source: LEAD_SOURCE[l.source]?.label || l.source,
+    Owner: l.assignedTo?.name || "—",
+    Value: l.status === "converted" && l.dealValue != null ? l.dealValue : l.potentialValue || 0,
+    "Next follow-up": l.nextFollowUpDate ? fmtDate(l.nextFollowUpDate) : "—",
+    Added: fmtDate(l.createdAt),
+  });
+  // Pulls every lead matching the current filters (not just the page on
+  // screen) — a salesperson only ever has their own leads in scope here, an
+  // admin/manager gets everyone's unless they've picked one salesperson above.
+  const fetchAllForExport = async () => {
+    const base = cleanParams();
+    let page = 1;
+    let all = [];
+    while (true) {
+      const res = await listLeads({ ...base, page, limit: 100 });
+      all = all.concat(res.data);
+      if (page >= res.pages || !res.data.length) break;
+      page++;
+    }
+    return all;
+  };
+  const exportLabel = () => {
+    const owner = filters.assignedTo && people.find((p) => p._id === filters.assignedTo);
+    return owner ? owner.name : "all";
+  };
+  const doExport = async (fmt) => {
+    setExporting(true);
+    try {
+      const rows = await fetchAllForExport();
+      if (!rows.length) return toast.error("No leads match the current filters.");
+      const exportRows = rows.map(toExportRow);
+      const base = `RBH-leads-${exportLabel().replace(/\s+/g, "-")}`;
+      if (fmt === "csv") {
+        exportCSV(`${base}.csv`, exportCols, exportRows);
+      } else {
+        exportPDF({
+          filename: `${base}.pdf`,
+          title: "RBH Sales CRM — Leads",
+          subtitle: `${rows.length} lead${rows.length === 1 ? "" : "s"} · ${exportLabel()}`,
+          columns: exportCols,
+          rows: exportRows,
+        });
+      }
+      toast.success(`${fmt.toUpperCase()} downloaded.`);
+    } catch (err) {
+      toast.error(err);
+    } finally {
+      setExporting(false);
+    }
+  };
+
   const goBack = () => (window.history.state?.idx > 0 ? nav(-1) : nav("/dashboard"));
 
   return (
@@ -349,6 +437,12 @@ export default function LeadsBoard() {
         actions={
           <>
             {ViewToggle}
+            <Button variant="secondary" onClick={() => doExport("csv")} disabled={exporting}>
+              <MdFileDownload size={16} /> CSV
+            </Button>
+            <Button variant="secondary" onClick={() => doExport("pdf")} disabled={exporting}>
+              <MdPictureAsPdf size={16} /> PDF
+            </Button>
             <Button variant="secondary" onClick={() => setImportOpen(true)}>
               <MdUploadFile size={16} /> Import
             </Button>
@@ -373,6 +467,13 @@ export default function LeadsBoard() {
               className="w-full rounded-lg border border-gray-300 shadow-sm pl-9 pr-3 py-2 text-sm transition-[border-color,box-shadow] hover:border-gray-400 focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary"
             />
           </div>
+          {canPickOwner && (
+            <SalespersonPicker
+              value={filters.assignedTo}
+              onChange={(v) => setFilter({ assignedTo: v })}
+              people={people}
+            />
+          )}
           <Listbox
             className="w-40"
             value={filters.status}
