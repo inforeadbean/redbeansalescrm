@@ -23,7 +23,7 @@ import ReminderModal from "../leads/ReminderModal.jsx";
 import ConversionInfoModal from "../ifo/ConversionInfoModal.jsx";
 import { useToast } from "../../context/ToastContext.jsx";
 import { useLiveData } from "../../hooks/useLiveData.js";
-import { CONVERSION_TYPE } from "../../utils/constants.js";
+import useConversionTypes from "../../hooks/useConversionTypes.js";
 import { inr, inrCompact, fmtDate, fromNow } from "../../utils/format.js";
 import { exportCSV, exportPDF } from "../../utils/exporters.js";
 import { getReceivables } from "../../services/reportService.js";
@@ -34,6 +34,7 @@ const days = (n) => (n == null ? "—" : n < 1 ? "today" : `${n} day${n === 1 ? 
 export default function Receivables() {
   const toast = useToast();
   const nav = useNavigate();
+  const { byCode: typesByCode, options: typeOptions } = useConversionTypes();
   const [type, setType] = useState("");
   const [salespersonId, setSalespersonId] = useState("");
   const [people, setPeople] = useState([]);
@@ -62,7 +63,7 @@ export default function Receivables() {
       Outlet: r.outletName,
       Client: r.lead?.name || "—",
       Owner: r.owner,
-      Type: CONVERSION_TYPE[r.conversionType]?.label || r.conversionType,
+      Type: typesByCode[r.conversionType]?.label || r.conversionType,
       Deal: r.dealValue,
       Received: r.amountReceived,
       Outstanding: r.outstanding,
@@ -96,11 +97,7 @@ export default function Receivables() {
               className="w-32"
               value={type}
               onChange={setType}
-              options={[
-                { value: "", label: "All types" },
-                { value: "ifo", label: "IFO" },
-                { value: "rbc", label: "RBC" },
-              ]}
+              options={[{ value: "", label: "All types" }, ...typeOptions]}
             />
             <Button variant="secondary" onClick={doCSV} disabled={!data}>
               <MdFileDownload size={16} /> CSV
@@ -175,8 +172,8 @@ export default function Receivables() {
                           <td className="py-3 px-4">
                             <div className="flex items-center gap-2">
                               <span className="font-medium text-gray-800">{r.outletName}</span>
-                              <Badge color={CONVERSION_TYPE[r.conversionType]?.color}>
-                                {CONVERSION_TYPE[r.conversionType]?.label}
+                              <Badge color={typesByCode[r.conversionType]?.color}>
+                                {typesByCode[r.conversionType]?.label || r.conversionType}
                               </Badge>
                             </div>
                             <p className="text-xs text-gray-400">{r.lead?.name || "—"}</p>

@@ -5,7 +5,8 @@ import Lead, { LEAD_STATUSES, LEAD_CLOSED, LEAD_SOURCES } from "../models/Lead.j
 import Call from "../models/Call.js";
 import Webinar from "../models/Webinar.js";
 import Event from "../models/Event.js";
-import IfoConversion, { CONVERSION_TYPES } from "../models/IfoConversion.js";
+import IfoConversion from "../models/IfoConversion.js";
+import ConversionType from "../models/ConversionType.js";
 import EventBooking from "../models/EventBooking.js";
 import User from "../models/User.js";
 import { convertedLeadStages } from "../utils/convertedOnly.js";
@@ -344,7 +345,7 @@ export const getInsights = asyncHandler(async (req, res) => {
   const zoomDepthMatch = { "lead.status": "webinar_attended", ...leadMatch("lead") };
   if (range) zoomDepthMatch["lead.createdAt"] = range;
 
-  const [sourceAgg, revenueMixAgg, receivablesAgg, zoomAgg, eventAgg, callAgg, cycleAgg, zoomDepthAgg, atZoomAttendedCount] =
+  const [sourceAgg, revenueMixAgg, receivablesAgg, zoomAgg, eventAgg, callAgg, cycleAgg, zoomDepthAgg, atZoomAttendedCount, conversionTypes] =
     await Promise.all([
       Lead.aggregate([
         { $match: { ...lf, ...on("createdAt") } },
@@ -432,6 +433,7 @@ export const getInsights = asyncHandler(async (req, res) => {
         { $sort: { _id: 1 } },
       ]),
       Lead.countDocuments({ ...lf, ...on("createdAt"), status: "webinar_attended" }),
+      ConversionType.find().select("code name").lean(),
     ]);
 
   const bySource = Object.fromEntries(sourceAgg.map((r) => [r._id, r]));
@@ -448,12 +450,14 @@ export const getInsights = asyncHandler(async (req, res) => {
     };
   }).filter((r) => r.leads > 0);
 
-  const byType = Object.fromEntries(revenueMixAgg.map((r) => [r._id, r]));
-  const revenueMix = CONVERSION_TYPES.map((t) => ({
-    type: t,
-    label: t.toUpperCase(),
-    count: byType[t]?.count || 0,
-    revenue: byType[t]?.revenue || 0,
+  // Dynamic — walks whatever conversion types exist (the original IFO/RBC plus
+  // anything added later from Settings), not a hardcoded pair.
+  const revenueByCode = Object.fromEntries(revenueMixAgg.map((r) => [r._id, r]));
+  const revenueMix = conversionTypes.map((t) => ({
+    type: t.code,
+    label: t.name,
+    count: revenueByCode[t.code]?.count || 0,
+    revenue: revenueByCode[t.code]?.revenue || 0,
   }));
 
   const rec = receivablesAgg[0] || {};

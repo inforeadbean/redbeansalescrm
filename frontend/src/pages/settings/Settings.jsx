@@ -1,13 +1,18 @@
+import { useState } from "react";
 import { useForm } from "react-hook-form";
 import PageHeader from "../../components/PageHeader.jsx";
 import Card from "../../components/ui/Card.jsx";
 import Button from "../../components/ui/Button.jsx";
+import Badge from "../../components/ui/Badge.jsx";
+import Spinner from "../../components/ui/Spinner.jsx";
 import { Input } from "../../components/ui/Field.jsx";
 import { useAuth } from "../../context/AuthContext.jsx";
 import { useToast } from "../../context/ToastContext.jsx";
+import useConversionTypes from "../../hooks/useConversionTypes.js";
 import { ROLE_LABELS } from "../../utils/roles.js";
-import { initials } from "../../utils/format.js";
+import { initials, inrCompact } from "../../utils/format.js";
 import { updateProfile, changePassword } from "../../services/authService.js";
+import { createConversionType } from "../../services/conversionTypeService.js";
 
 function ProfileForm() {
   const { user, refresh } = useAuth();
@@ -128,6 +133,79 @@ function PasswordForm() {
   );
 }
 
+// Conversion types (IFO, RBC, and anything else the team wants to track) are
+// company-wide, not per-user — any role can add one here so a salesperson
+// closing an unusual deal isn't blocked waiting on an admin.
+function ConversionTypesCard() {
+  const toast = useToast();
+  const { types, loading, reload } = useConversionTypes();
+  const [name, setName] = useState("");
+  const [defaultValue, setDefaultValue] = useState("");
+  const [busy, setBusy] = useState(false);
+
+  const onSubmit = async (e) => {
+    e.preventDefault();
+    if (!name.trim()) return toast.error("Give the new type a name.");
+    setBusy(true);
+    try {
+      await createConversionType({ name: name.trim(), defaultValue: Number(defaultValue) || 0 });
+      toast.success(`"${name.trim()}" added — it'll show up wherever conversion type is picked.`);
+      setName("");
+      setDefaultValue("");
+      await reload();
+    } catch (err) {
+      toast.error(err);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <Card>
+      <h2 className="font-semibold text-gray-800 mb-1">Conversion types</h2>
+      <p className="text-xs text-gray-400 mb-4">
+        IFO and RBC come built in. Add another type here and it becomes available for anyone recording a
+        conversion, filtering reports, and on the dashboard.
+      </p>
+
+      {loading ? (
+        <Spinner />
+      ) : (
+        <div className="flex flex-wrap gap-2 mb-4">
+          {types.map((t) => (
+            <Badge key={t.code} color={t.color}>
+              {t.label}
+              {t.defaultValue ? ` · ₹${inrCompact(t.defaultValue)}` : ""}
+            </Badge>
+          ))}
+        </div>
+      )}
+
+      <form onSubmit={onSubmit} className="grid sm:grid-cols-[1fr_auto_auto] gap-3 items-end">
+        <Input
+          label="New type name"
+          placeholder="e.g. Franchise"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+        />
+        <div className="sm:w-40">
+          <Input
+            label="Default deal value (₹)"
+            type="number"
+            min="0"
+            placeholder="0"
+            value={defaultValue}
+            onChange={(e) => setDefaultValue(e.target.value)}
+          />
+        </div>
+        <Button type="submit" disabled={busy}>
+          {busy ? "Adding…" : "Add type"}
+        </Button>
+      </form>
+    </Card>
+  );
+}
+
 export default function Settings() {
   return (
     <div>
@@ -135,6 +213,9 @@ export default function Settings() {
       <div className="grid xl:grid-cols-2 gap-5 items-start">
         <ProfileForm />
         <PasswordForm />
+        <div className="xl:col-span-2">
+          <ConversionTypesCard />
+        </div>
       </div>
     </div>
   );

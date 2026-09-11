@@ -14,7 +14,7 @@ import IfoFormModal from "./IfoFormModal.jsx";
 import ConversionInfoModal from "./ConversionInfoModal.jsx";
 import { useToast } from "../../context/ToastContext.jsx";
 import PeriodFilter, { periodRange } from "../../components/PeriodFilter.jsx";
-import { CONVERSION_TYPE } from "../../utils/constants.js";
+import useConversionTypes from "../../hooks/useConversionTypes.js";
 import { inr, inrCompact, fmtDate, pct } from "../../utils/format.js";
 import { listIfo } from "../../services/ifoService.js";
 
@@ -22,6 +22,7 @@ export default function IfoList() {
   const nav = useNavigate();
   const toast = useToast();
   const location = useLocation();
+  const { byCode: typesByCode, options: typeOptions } = useConversionTypes();
   const [searchParams, setSearchParams] = useSearchParams();
   const [fromDash] = useState(() => location.state?.from === "dashboard");
   const [page, setPage] = useState(1);
@@ -84,7 +85,7 @@ export default function IfoList() {
     {
       key: "conversionType",
       header: "Type",
-      render: (r) => <Badge color={CONVERSION_TYPE[r.conversionType]?.color}>{CONVERSION_TYPE[r.conversionType]?.label}</Badge>,
+      render: (r) => <Badge color={typesByCode[r.conversionType]?.color}>{typesByCode[r.conversionType]?.label || r.conversionType}</Badge>,
     },
     { key: "outletCity", header: "City", render: (r) => r.outletCity || "—" },
     { key: "convertedBy", header: "Closed by", render: (r) => r.convertedBy?.name || "—" },
@@ -181,7 +182,7 @@ export default function IfoList() {
           label="Conversions"
           value={s.count || 0}
           icon={MdStorefront}
-          hint={`${s.ifo || 0} IFO · ${s.rbc || 0} RBC`}
+          hint={(s.byType || []).map((t) => `${t.count} ${t.name}`).join(" · ")}
         />
         <StatCard label="Deal value" value={inrCompact(s.revenue || 0)} icon={MdMonetizationOn} />
         <StatCard label="Collected" value={inrCompact(s.collected || 0)} icon={MdSavings} accent="text-green-600" />
@@ -205,11 +206,7 @@ export default function IfoList() {
               v ? next.set("type", v) : next.delete("type");
               setSearchParams(next, { replace: true });
             }}
-            options={[
-              { value: "", label: "All types" },
-              { value: "ifo", label: "IFO" },
-              { value: "rbc", label: "RBC" },
-            ]}
+            options={[{ value: "", label: "All types" }, ...typeOptions]}
           />
           {!urlFrom && !urlTo && (
             <PeriodFilter value={period} onChange={(k) => { setPeriod(k); setPage(1); }} />

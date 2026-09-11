@@ -6,7 +6,7 @@ import Button from "../../components/ui/Button.jsx";
 import Badge from "../../components/ui/Badge.jsx";
 import Spinner from "../../components/ui/Spinner.jsx";
 import { useToast } from "../../context/ToastContext.jsx";
-import { CONVERSION_TYPE } from "../../utils/constants.js";
+import useConversionTypes from "../../hooks/useConversionTypes.js";
 import { inr, fmtDate, fmtDateTime, fromNow, pct } from "../../utils/format.js";
 import { getIfo, addPayment, updateIfo } from "../../services/ifoService.js";
 
@@ -17,6 +17,7 @@ const iso = (d) => (d ? new Date(d).toISOString().slice(0, 10) : "");
 // there's a link through to it.
 export default function ConversionInfoModal({ open, onClose, conversionId, onChanged }) {
   const toast = useToast();
+  const { byCode: typesByCode } = useConversionTypes();
   const [ifo, setIfo] = useState(null);
   const [loading, setLoading] = useState(true);
   const [amount, setAmount] = useState("");
@@ -128,8 +129,8 @@ export default function ConversionInfoModal({ open, onClose, conversionId, onCha
         ifo ? (
           <span className="flex items-center gap-2">
             {ifo.outletName}
-            <Badge color={CONVERSION_TYPE[ifo.conversionType]?.color}>
-              {CONVERSION_TYPE[ifo.conversionType]?.label}
+            <Badge color={typesByCode[ifo.conversionType]?.color}>
+              {typesByCode[ifo.conversionType]?.label || ifo.conversionType}
             </Badge>
           </span>
         ) : (

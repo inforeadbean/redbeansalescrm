@@ -1,7 +1,9 @@
 import mongoose from "mongoose";
 import { emitSync } from "../realtime/io.js";
 
-// The two kinds of win RBH books, with their standard contract values.
+// The two kinds of win RBH started with, kept here only for the demo seed
+// script. The real, extensible set of conversion types (any signed-in user
+// can add more from Settings) lives in the ConversionType collection.
 export const CONVERSION_TYPES = ["ifo", "rbc"];
 export const CONVERSION_DEFAULT_VALUE = { ifo: 200000, rbc: 500000 };
 
@@ -36,7 +38,10 @@ const conversionSchema = new mongoose.Schema(
   {
     lead: { type: mongoose.Schema.Types.ObjectId, ref: "Lead", required: true, index: true },
     convertedBy: { type: mongoose.Schema.Types.ObjectId, ref: "User", index: true },
-    conversionType: { type: String, enum: CONVERSION_TYPES, default: "ifo", required: true },
+    // No enum here — the valid set now lives in the ConversionType collection
+    // (admin/manager/salesperson can add to it from Settings), checked in the
+    // controller rather than baked into the schema.
+    conversionType: { type: String, default: "ifo", required: true, lowercase: true, trim: true },
     // Defaults to the lead's restaurant name / city (the controller fills them
     // in) — not asked for when recording a conversion.
     outletName: { type: String, trim: true, maxlength: 200 },

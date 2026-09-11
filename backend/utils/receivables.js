@@ -1,4 +1,4 @@
-import IfoConversion, { CONVERSION_TYPES } from "../models/IfoConversion.js";
+import IfoConversion from "../models/IfoConversion.js";
 import { keepConvertedLeads } from "./convertedOnly.js";
 
 const DAY = 86400000;
@@ -11,7 +11,7 @@ export async function buildReceivables(salespersonIds, { type } = {}) {
     convertedBy: { $in: salespersonIds },
     $expr: { $lt: ["$amountReceived", "$dealValue"] },
   };
-  if (CONVERSION_TYPES.includes(type)) match.conversionType = type;
+  if (typeof type === "string" && type) match.conversionType = type;
 
   const all = await IfoConversion.find(match)
     .populate("lead", "name phone restaurantName status")

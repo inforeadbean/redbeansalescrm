@@ -1,10 +1,11 @@
 import { useEffect, useState } from "react";
 import Modal from "../../components/ui/Modal.jsx";
 import Button from "../../components/ui/Button.jsx";
-import { Input, Textarea, Select } from "../../components/ui/Field.jsx";
+import { Input, Textarea, FieldShell } from "../../components/ui/Field.jsx";
+import Listbox from "../../components/ui/Listbox.jsx";
 import LeadPicker from "../../components/LeadPicker.jsx";
 import { useToast } from "../../context/ToastContext.jsx";
-import { CONVERSION_TYPE, optionsFrom } from "../../utils/constants.js";
+import useConversionTypes from "../../hooks/useConversionTypes.js";
 import { inrCompact } from "../../utils/format.js";
 import { createIfo, updateIfo } from "../../services/ifoService.js";
 
@@ -22,6 +23,7 @@ function todayLocal() {
 // via the (i) history modal.
 export default function IfoFormModal({ open, onClose, onSaved, ifo, presetLead }) {
   const toast = useToast();
+  const { options: typeOptions, byCode: typesByCode } = useConversionTypes();
   const editing = !!ifo;
   const [lead, setLead] = useState(null);
   const [form, setForm] = useState({});
@@ -50,7 +52,7 @@ export default function IfoFormModal({ open, onClose, onSaved, ifo, presetLead }
     const type = ifo?.conversionType || "ifo";
     setForm({
       conversionType: type,
-      dealValue: ifo?.dealValue ?? CONVERSION_TYPE[type].defaultValue,
+      dealValue: ifo?.dealValue ?? typesByCode[type]?.defaultValue ?? 0,
       amountPaid: 0,
       conversionDate: ifo?.conversionDate ? ifo.conversionDate.slice(0, 10) : todayLocal(),
       notes: ifo?.notes || "",
@@ -64,12 +66,11 @@ export default function IfoFormModal({ open, onClose, onSaved, ifo, presetLead }
 
   const set = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }));
 
-  const setType = (e) => {
-    const conversionType = e.target.value;
+  const setType = (conversionType) => {
     setForm((f) => ({
       ...f,
       conversionType,
-      dealValue: valueTouched ? f.dealValue : CONVERSION_TYPE[conversionType].defaultValue,
+      dealValue: valueTouched ? f.dealValue : typesByCode[conversionType]?.defaultValue ?? f.dealValue,
     }));
   };
 
@@ -160,13 +161,16 @@ export default function IfoFormModal({ open, onClose, onSaved, ifo, presetLead }
         )}
 
         <div className="grid sm:grid-cols-2 gap-4">
-          <Select
+          <FieldShell
             label="Conversion type"
-            options={optionsFrom(CONVERSION_TYPE)}
-            value={type}
-            onChange={setType}
-            hint={`Standard ${CONVERSION_TYPE[type].label} value: ${inrCompact(CONVERSION_TYPE[type].defaultValue)}`}
-          />
+            hint={
+              typesByCode[type]
+                ? `Standard ${typesByCode[type].label} value: ${inrCompact(typesByCode[type].defaultValue)}`
+                : "Add more types from Settings."
+            }
+          >
+            <Listbox value={type} onChange={setType} options={typeOptions} placeholder="Choose a type…" />
+          </FieldShell>
           <Input
             label="Deal value (₹)"
             type="number"

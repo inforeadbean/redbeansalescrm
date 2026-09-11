@@ -1,10 +1,8 @@
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { paginate } from "../utils/paginate.js";
 import { activityScope, leadScope } from "../utils/scope.js";
-import IfoConversion, {
-  CONVERSION_TYPES,
-  CONVERSION_DEFAULT_VALUE,
-} from "../models/IfoConversion.js";
+import IfoConversion, { CONVERSION_DEFAULT_VALUE } from "../models/IfoConversion.js";
+import ConversionType from "../models/ConversionType.js";
 import Lead, { LEAD_STATUSES } from "../models/Lead.js";
 import Remark from "../models/Remark.js";
 import Reminder from "../models/Reminder.js";
@@ -19,9 +17,9 @@ const dmy = (d) => new Date(d).toLocaleDateString("en-IN");
 export const listIfo = asyncHandler(async (req, res) => {
   const scope = await activityScope(req.user, "convertedBy");
   const filter = { ...scope, ...dateRangeFilter("conversionDate", req.query.from, req.query.to) };
-  if (CONVERSION_TYPES.includes(req.query.type)) filter.conversionType = req.query.type;
+  if (typeof req.query.type === "string" && req.query.type) filter.conversionType = req.query.type;
 
-  const [result, agg] = await Promise.all([
+  const [result, agg, byTypeAgg, types] = await Promise.all([
     paginate(IfoConversion, filter, {
       query: req.query,
       sort: req.query.sort || "-conversionDate",
@@ -40,14 +38,17 @@ export const listIfo = asyncHandler(async (req, res) => {
           revenue: { $sum: "$dealValue" },
           collected: { $sum: "$amountReceived" },
           avg: { $avg: "$dealValue" },
-          ifo: { $sum: { $cond: [{ $eq: ["$conversionType", "ifo"] }, 1, 0] } },
-          rbc: { $sum: { $cond: [{ $eq: ["$conversionType", "rbc"] }, 1, 0] } },
         },
       },
     ]),
+    // Per-type counts — dynamic, so a custom type added from Settings shows
+    // up here too, not just the original IFO/RBC.
+    IfoConversion.aggregate([{ $match: filter }, { $group: { _id: "$conversionType", count: { $sum: 1 } } }]),
+    ConversionType.find().select("code name").lean(),
   ]);
 
   const a = agg[0] || {};
+  const nameOf = Object.fromEntries(types.map((t) => [t.code, t.name]));
   res.json({
     ...result,
     summary: {
@@ -56,8 +57,7 @@ export const listIfo = asyncHandler(async (req, res) => {
       collected: a.collected || 0,
       outstanding: (a.revenue || 0) - (a.collected || 0),
       avgDealValue: Math.round(a.avg || 0),
-      ifo: a.ifo || 0,
-      rbc: a.rbc || 0,
+      byType: byTypeAgg.map((r) => ({ code: r._id, name: nameOf[r._id] || r._id?.toUpperCase(), count: r.count })),
     },
   });
 });
@@ -82,13 +82,15 @@ export const getIfo = asyncHandler(async (req, res) => {
 // they default to the lead's restaurant name / city.
 export const createIfo = asyncHandler(async (req, res) => {
   const { lead } = req.body;
-  const conversionType = CONVERSION_TYPES.includes(req.body.conversionType)
-    ? req.body.conversionType
-    : "ifo";
+  const requestedCode = String(req.body.conversionType || "").trim().toLowerCase();
+  const typeDoc = requestedCode ? await ConversionType.findOne({ code: requestedCode }).lean() : null;
+  const conversionType = typeDoc ? typeDoc.code : "ifo";
   const dealValue =
     req.body.dealValue != null && req.body.dealValue !== ""
       ? Math.max(0, Number(req.body.dealValue))
-      : CONVERSION_DEFAULT_VALUE[conversionType];
+      : typeDoc
+      ? typeDoc.defaultValue
+      : CONVERSION_DEFAULT_VALUE.ifo;
   const amountPaid = Math.max(0, Number(req.body.amountPaid ?? req.body.amountReceived) || 0);
 
   if (!lead) {
@@ -214,8 +216,10 @@ export const updateIfo = asyncHandler(async (req, res) => {
     res.status(404);
     throw new Error("Conversion not found.");
   }
-  if (req.body.conversionType && CONVERSION_TYPES.includes(req.body.conversionType))
-    ifo.conversionType = req.body.conversionType;
+  if (req.body.conversionType) {
+    const code = String(req.body.conversionType).trim().toLowerCase();
+    if (await ConversionType.exists({ code })) ifo.conversionType = code;
+  }
   for (const k of ["outletName", "outletCity", "dealValue", "conversionDate", "notes"])
     if (req.body[k] !== undefined) ifo[k] = req.body[k];
   for (const k of ["nextInstallmentDate", "nextInstallmentAmount", "nextInstallmentNote"])
