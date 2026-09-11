@@ -37,9 +37,19 @@ const histOf = (l) =>
       ];
 
 // The furthest funnel stage a lead ever got to (its history + current status).
+// "converted" is the one stage that can be undone (a manager reversing a
+// wrong sale via deleteIfo walks the lead back to its pre-conversion stage) —
+// statusHistory is append-only, so a reversed lead's history still has a
+// "converted" entry in it. Counting that would make the funnel's Converted
+// bar disagree with the actual client count everywhere else (dashboard,
+// summary card on this same report). So a stale "converted" entry only
+// counts if the lead is still actually converted right now.
 function furthestStage(l, hist) {
   let idx = -1;
-  for (const h of hist) if (STAGE_INDEX[h.status] > idx) idx = STAGE_INDEX[h.status];
+  for (const h of hist) {
+    if (h.status === "converted" && l.status !== "converted") continue;
+    if (STAGE_INDEX[h.status] > idx) idx = STAGE_INDEX[h.status];
+  }
   if (STAGE_INDEX[l.status] > idx) idx = STAGE_INDEX[l.status];
   return idx;
 }
