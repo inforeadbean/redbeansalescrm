@@ -191,6 +191,9 @@ export default function LeadDetail() {
       setIfoOpen(true);
       return;
     }
+    if (nextStatus === "event_interested" && !lead.seatBooking && !(Number(seatAmount) > 0)) {
+      return toast.error("Enter the seat booking amount collected before moving this lead.");
+    }
     doSubmitStatus();
   };
 
@@ -475,7 +478,7 @@ export default function LeadDetail() {
             {nextStatus === "event_interested" && !lead.seatBooking && (
               <label className="block mb-3">
                 <span className="text-xs font-semibold text-gray-500">
-                  Event seat booking (₹) — optional
+                  Event seat booking (₹) <span className="text-red-500">*</span>
                 </span>
                 <input
                   type="number"
@@ -487,6 +490,9 @@ export default function LeadDetail() {
                   placeholder="e.g. 2000"
                   className="w-full mt-1 rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
                 />
+                <span className="block text-[11px] text-gray-400 mt-1">
+                  Required — how much did they pay to reserve their seat?
+                </span>
               </label>
             )}
             {nextStatus === "event_interested" && lead.seatBooking && (

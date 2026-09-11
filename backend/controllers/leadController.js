@@ -510,6 +510,18 @@ export const updateLeadStatus = asyncHandler(async (req, res) => {
     }
   }
 
+  // A seat booking fee is compulsory the first time a lead enters "Interested
+  // for event" — it's the money that actually reserves the seat. Skipped only
+  // if one was already collected before (a re-transition doesn't re-charge).
+  // Checked before anything is saved, same as the max-amount check above.
+  if (status === "event_interested" && from !== "event_interested") {
+    const alreadyBooked = await EventBooking.exists({ lead: lead._id });
+    if (!alreadyBooked && !(Number(seatBookingAmount) > 0)) {
+      res.status(400);
+      throw new Error('A seat booking amount is required to move this lead to "Interested for event".');
+    }
+  }
+
   // Moving a lead OUT of "Converted" un-does the sale: its IfoConversion (deal
   // value, payment log) and instalment reminder are removed so revenue, client
   // counts and the 5-for-3 report everywhere stop counting this lead. The

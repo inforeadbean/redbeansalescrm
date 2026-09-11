@@ -82,7 +82,12 @@ export default function StatusChangeModal({ open, onClose, lead, toStatus, onDon
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, toStatus]);
 
+  const seatRequired = toStatus === "event_interested" && !lead?.seatBooking;
+
   const submit = async () => {
+    if (seatRequired && !(Number(seatAmount) > 0)) {
+      return toast.error("Enter the seat booking amount collected before moving this lead.");
+    }
     setBusy(true);
     try {
       await updateLeadStatus(lead._id, {
@@ -165,14 +170,16 @@ export default function StatusChangeModal({ open, onClose, lead, toStatus, onDon
             </label>
           ))}
 
-        {toStatus === "event_interested" && !lead?.seatBooking && (
+        {seatRequired && (
           <Input
-            label="Event seat booking (₹) — optional"
+            label="Event seat booking (₹)"
+            required
             type="number"
             min="0"
             max="10000"
             inputMode="numeric"
             placeholder="e.g. 2000"
+            hint="Required — how much did they pay to reserve their seat?"
             value={seatAmount}
             onChange={(e) => setSeatAmount(e.target.value)}
           />
