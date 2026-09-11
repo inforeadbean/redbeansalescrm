@@ -6,14 +6,16 @@ import Button from "../../components/ui/Button.jsx";
 import Listbox from "../../components/ui/Listbox.jsx";
 import Spinner from "../../components/ui/Spinner.jsx";
 import MonthPicker from "../../components/MonthPicker.jsx";
-import CallingReportTable, { currentWeekOfMonth } from "../../components/CallingReportTable.jsx";
+import CallingReportTable from "../../components/CallingReportTable.jsx";
 import { useToast } from "../../context/ToastContext.jsx";
 import { useLiveData } from "../../hooks/useLiveData.js";
 import { MONTHS, fmtDate, fromNow } from "../../utils/format.js";
 import { exportCSV, exportPDF } from "../../utils/exporters.js";
 import { getCallingReport } from "../../services/reportService.js";
 
-const WEEK_OPTIONS = [1, 2, 3, 4].map((w) => ({ value: w, label: `Week ${w}` }));
+// 0 = All Weeks (the month total) — the default; a salesperson only narrows
+// to one week when they actually pick it.
+const WEEK_OPTIONS = [{ value: 0, label: "All Weeks" }, ...[1, 2, 3, 4].map((w) => ({ value: w, label: `Week ${w}` }))];
 
 // Flat rows for CSV / PDF — one line per (week, salesperson) + a week TOTAL,
 // then the Month Total block. One column per Zoom meeting and per Event this
@@ -43,13 +45,12 @@ export default function CallingReport() {
   const toast = useToast();
   const now = new Date();
   const [period, setPeriod] = useState({ month: now.getMonth() + 1, year: now.getFullYear() });
-  const [week, setWeek] = useState(() => Math.min(4, Math.max(1, currentWeekOfMonth(period.month, period.year) || 1)));
+  const [week, setWeek] = useState(0); // All Weeks by default
 
-  // Jumping to a different month: default the week filter back to whichever
-  // week makes sense for that month (current week if it's this month, else
-  // Week 1) instead of leaving it on a stale selection.
+  // Jumping to a different month: back to "All Weeks" instead of leaving a
+  // stale week selected from whatever month was open before.
   useEffect(() => {
-    setWeek(Math.min(4, Math.max(1, currentWeekOfMonth(period.month, period.year) || 1)));
+    setWeek(0);
   }, [period.month, period.year]);
 
   // Live: same refresh model as the Sales Report — auto-updates every 20s and
@@ -106,7 +107,7 @@ export default function CallingReport() {
           <>
             <div className="flex items-center justify-between gap-3 mb-4 flex-wrap">
               <p className="text-sm text-gray-500">
-                Showing <b className="text-gray-700">{periodLabel}</b>, <b className="text-gray-700">Week {week}</b>.
+                Showing <b className="text-gray-700">{periodLabel}</b>, <b className="text-gray-700">{week === 0 ? "All Weeks" : `Week ${week}`}</b>.
               </p>
               <div className="flex items-center gap-2 text-xs text-gray-400">
                 {error ? (

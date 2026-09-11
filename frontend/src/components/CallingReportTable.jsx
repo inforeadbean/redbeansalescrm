@@ -14,10 +14,10 @@ export function currentWeekOfMonth(month, year) {
 
 export default function CallingReportTable({ data, week }) {
   if (!data) return null;
-  const { meetings, events, weeks } = data;
+  const { meetings, events, weeks, monthTotal } = data;
   const now = new Date();
   const curWeek = currentWeekOfMonth(data.month, data.year);
-  const future = week > curWeek;
+  const future = week > 0 && week > curWeek;
 
   // Dynamic middle columns — one per Zoom meeting and one per Event this
   // month, merged into a single date-ordered timeline.
@@ -26,7 +26,7 @@ export default function CallingReportTable({ data, week }) {
     ...events.map((e) => ({ key: e.eventId, bag: "events", kind: "Event", title: e.title, when: e.date })),
   ].sort((a, b) => new Date(a.when) - new Date(b.when));
 
-  const selectedWeek = weeks.find((w) => w.week === week) || weeks[0];
+  const selectedWeek = week === 0 ? monthTotal : weeks.find((w) => w.week === week) || monthTotal;
 
   const numCells = (c, isTotal) => (
     <>
