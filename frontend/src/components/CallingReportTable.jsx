@@ -42,7 +42,7 @@ export default function CallingReportTable({ data, week }) {
     </>
   );
 
-  const Block = ({ section, highlight, future, open, onToggle }) => (
+  const Block = ({ section, highlight, future, open, onToggle, showLabel = true }) => (
     <>
       <tr
         className={`${highlight ? "bg-slate-200" : future ? "bg-slate-50" : "bg-slate-100"} ${
@@ -53,7 +53,7 @@ export default function CallingReportTable({ data, week }) {
         <td className="px-3 py-2.5 text-[13px] font-extrabold uppercase tracking-wide whitespace-nowrap border-r-2 border-slate-300 border-t border-slate-200 text-slate-800">
           <span className="inline-flex items-center gap-1">
             {onToggle ? open ? <MdExpandMore size={16} /> : <MdChevronRight size={16} /> : null}
-            {section.label}
+            {showLabel ? section.label : ""}
           </span>
         </td>
         <td className="px-3 py-2.5 text-[13px] font-extrabold uppercase text-slate-600 border-r border-slate-200 border-t border-slate-200">
@@ -81,7 +81,7 @@ export default function CallingReportTable({ data, week }) {
           <thead>
             <tr className="text-xs uppercase tracking-wide text-white bg-slate-700">
               <th className="px-3 py-3 text-left font-bold border-r border-slate-500" colSpan={2}>
-                Week / Salesperson
+                Salesperson
               </th>
               <th className="px-3 py-3 text-right font-bold border-l border-slate-500 leading-tight">
                 Total Leads<span className="block text-[10px] normal-case text-slate-300 font-medium mt-0.5">added</span>
@@ -106,7 +106,7 @@ export default function CallingReportTable({ data, week }) {
             </tr>
           </thead>
           <tbody>
-            <Block section={selectedWeek} future={week > curWeek} />
+            <Block section={selectedWeek} future={week > curWeek} showLabel={false} />
             <Block
               section={monthTotal}
               highlight
