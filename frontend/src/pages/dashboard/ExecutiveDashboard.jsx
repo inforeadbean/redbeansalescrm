@@ -206,7 +206,7 @@ export default function ExecutiveDashboard({ title, subtitle }) {
                 {isAllTime ? "Where every lead stands" : `Where ${periodLabel}'s new leads stand`} right now — click a
                 stage.
               </p>
-              <DonutChart data={statusItems(core.summary.statusSplit)} centerLabel="new leads" onItemClick={(d) => openStage(d.status)} />
+              <DonutChart data={statusItems(core.summary.statusSplit)} centerLabel="total leads" onItemClick={(d) => openStage(d.status)} />
             </Card>
             <Card>
               <h3 className="font-bold text-gray-800">Pipeline funnel</h3>
