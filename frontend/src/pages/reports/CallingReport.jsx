@@ -106,7 +106,7 @@ export default function CallingReport() {
           <>
             <div className="flex items-center justify-between gap-3 mb-4 flex-wrap">
               <p className="text-sm text-gray-500">
-                Showing <b className="text-gray-700">{periodLabel}</b>, <b className="text-gray-700">Week {week}</b> — click the month total row to see each salesperson.
+                Showing <b className="text-gray-700">{periodLabel}</b>, <b className="text-gray-700">Week {week}</b>.
               </p>
               <div className="flex items-center gap-2 text-xs text-gray-400">
                 {error ? (
