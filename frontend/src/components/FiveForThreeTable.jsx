@@ -148,11 +148,6 @@ export default function FiveForThreeTable({ data }) {
         </table>
       </div>
       <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-gray-500 mt-3 px-1">
-        <span>
-          Leads / Revenue: <b className="text-gray-600">Pl</b> = monthly target ÷ 4. Zoom / Event / Clients
-          are a running funnel — each lead is counted once in <i>every</i> stage it reached, in the week it got
-          there. <b className="text-gray-600">Pl</b> = reached "interested", <b className="text-gray-600">Act</b> = reached "attended".
-        </span>
         <span className="flex items-center gap-1">
           <span className="h-2.5 w-2.5 rounded-sm bg-emerald-400" /> on / ahead of plan
         </span>

@@ -89,11 +89,9 @@ export default function CallingReportTable({ data, week }) {
           </tbody>
         </table>
       </div>
-      <p className="mt-2 text-xs text-gray-500 px-1">
-        <b className="text-gray-600">Total Called</b> = leads moved off the "New" stage (contacted). A
-        Zoom meeting's or Event's attended count sits in the week it ran.
-        {dynCols.length === 0 && " No Zoom meeting or Event is scheduled this month yet."}
-      </p>
+      {dynCols.length === 0 && (
+        <p className="mt-2 text-xs text-gray-500 px-1">No Zoom meeting or Event is scheduled this month yet.</p>
+      )}
     </div>
   );
 }
