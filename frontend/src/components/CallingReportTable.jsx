@@ -3,10 +3,10 @@ import { MdExpandMore, MdChevronRight } from "react-icons/md";
 import { fmtDate } from "../utils/format.js";
 
 // "Calling Sales Report" — Week 1-4 + Month Total, one sub-row per salesperson
-// (same shape as the 5-for-3 board), actuals only. A funnel off the month's
-// Zoom meetings: Leads added · Called (off "New") · <col per Zoom meeting> ·
-// <col per Event, if any> · Converted (once a Zoom attendee converts).
-// A meeting / event runs in one week, so its number sits in that week's row.
+// (same shape as the 5-for-3 board), actuals only: Leads added · Called (off
+// "New") · <col per Zoom meeting this month>. A meeting runs in one week, so
+// its number sits in that week's row. Event / Converted columns are left out
+// on purpose — this report is Zoom-only.
 
 function currentWeekOfMonth(month, year) {
   const now = new Date();
@@ -18,17 +18,15 @@ function currentWeekOfMonth(month, year) {
 export default function CallingReportTable({ data }) {
   const [open, setOpen] = useState({});
   if (!data) return null;
-  const { meetings, events, weeks, monthTotal, showConverted } = data;
+  const { meetings, weeks, monthTotal } = data;
   const now = new Date();
   const curWeek = currentWeekOfMonth(data.month, data.year);
 
-  // Merged list of the dynamic middle columns, in date order.
-  const dynCols = [
-    ...meetings.map((m) => ({ key: m.webinarId, bag: "zooms", title: m.title, when: m.scheduledAt })),
-    ...events.map((e) => ({ key: e.eventId, bag: "events", title: e.title, when: e.date })),
-  ].sort((a, b) => new Date(a.when) - new Date(b.when));
+  // Dynamic middle columns — one per Zoom meeting this month, in date order.
+  const dynCols = meetings
+    .map((m) => ({ key: m.webinarId, bag: "zooms", title: m.title, when: m.scheduledAt }))
+    .sort((a, b) => new Date(a.when) - new Date(b.when));
 
-  const colCount = 2 + 2 + dynCols.length + (showConverted ? 1 : 0);
   const isOpen = (w) => open[w] ?? w <= curWeek;
   const toggle = (w) => setOpen((o) => ({ ...o, [w]: !isOpen(w) }));
 
@@ -41,7 +39,6 @@ export default function CallingReportTable({ data }) {
           {c[col.bag][col.key]}
         </td>
       ))}
-      {showConverted && <td className={numCls(isTotal)}>{c.converted}</td>}
     </>
   );
 
@@ -108,12 +105,6 @@ export default function CallingReportTable({ data }) {
                   </th>
                 );
               })}
-              {showConverted && (
-                <th className="px-3 py-3 text-right font-bold border-l border-slate-500 leading-tight">
-                  Converted
-                  <span className="block text-[10px] normal-case text-slate-300 font-medium mt-0.5">Zoom → paid</span>
-                </th>
-              )}
             </tr>
           </thead>
           <tbody>
@@ -125,10 +116,9 @@ export default function CallingReportTable({ data }) {
         </table>
       </div>
       <p className="mt-2 text-xs text-gray-500 px-1">
-        <b className="text-gray-600">Called</b> = leads moved off the "New" stage (contacted).
-        Event / Converted count only leads who attended one of this month's Zoom meetings. A meeting
-        sits in the week it runs.
-        {dynCols.length === 0 && " No Zoom meeting or event is scheduled this month yet."}
+        <b className="text-gray-600">Called</b> = leads moved off the "New" stage (contacted). A Zoom
+        meeting's attended count sits in the week it runs.
+        {dynCols.length === 0 && " No Zoom meeting is scheduled this month yet."}
       </p>
     </div>
   );

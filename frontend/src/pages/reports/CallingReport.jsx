@@ -13,25 +13,15 @@ import { exportCSV, exportPDF } from "../../utils/exporters.js";
 import { getCallingReport } from "../../services/reportService.js";
 
 // Flat rows for CSV / PDF — one line per (week, salesperson) + a week TOTAL,
-// then the Month Total block. Zoom / Event columns are per-meeting.
+// then the Month Total block. One column per Zoom meeting — this report is
+// Zoom-only, event/conversion numbers live in other reports.
 const flatten = (data) => {
   if (!data) return { columns: [], rows: [] };
-  const dyn = [
-    ...data.meetings.map((m) => ({ h: `${m.title} (${fmtDate(m.scheduledAt)})`, bag: "zooms", key: m.webinarId })),
-    ...data.events.map((e) => ({ h: `${e.title} (${fmtDate(e.date)})`, bag: "events", key: e.eventId })),
-  ];
-  const headers = [
-    "Section",
-    "Name",
-    "Leads",
-    "Called",
-    ...dyn.map((c) => c.h),
-    ...(data.showConverted ? ["Converted (from Zoom)"] : []),
-  ];
+  const dyn = data.meetings.map((m) => ({ h: `${m.title} (${fmtDate(m.scheduledAt)})`, bag: "zooms", key: m.webinarId }));
+  const headers = ["Section", "Name", "Leads", "Called", ...dyn.map((c) => c.h)];
   const line = (section, name, src) => {
     const r = { Section: section, Name: name, Leads: src.leads ?? 0, Called: src.called ?? 0 };
     dyn.forEach((c) => (r[c.h] = src[c.bag]?.[c.key] ?? 0));
-    if (data.showConverted) r["Converted (from Zoom)"] = src.converted ?? 0;
     return r;
   };
   const rows = [];
