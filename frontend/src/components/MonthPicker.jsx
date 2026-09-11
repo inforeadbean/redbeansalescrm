@@ -18,7 +18,7 @@ export default function MonthPicker({ value, onChange, allowYear = false, allowA
   ];
 
   return (
-    <div className="flex gap-2">
+    <div className="flex flex-wrap gap-2">
       <Listbox className="w-32" value={value.month} onChange={setMonth} options={monthOptions} />
       {!isAllTime && (
         <Listbox
