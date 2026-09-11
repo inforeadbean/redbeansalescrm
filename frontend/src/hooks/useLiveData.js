@@ -9,19 +9,30 @@ export function useLiveData(fetcher, deps = [], { intervalMs = 20000 } = {}) {
   const [state, setState] = useState({ data: null, loading: true, error: null, refreshedAt: null });
   const fetcherRef = useRef(fetcher);
   fetcherRef.current = fetcher;
+  // Guards against an out-of-order response: if the filters change twice in a
+  // row and the first request happens to resolve after the second (a slow
+  // network, a heavier date range), its stale data must not overwrite the
+  // fresher one. Only the response to the most recently issued call is ever
+  // applied.
+  const requestIdRef = useRef(0);
 
   const load = useCallback((silent = false) => {
     if (!silent) setState((s) => ({ ...s, loading: true }));
+    const requestId = ++requestIdRef.current;
     return fetcherRef
       .current()
-      .then((data) => setState({ data, loading: false, error: null, refreshedAt: Date.now() }))
-      .catch((err) =>
+      .then((data) => {
+        if (requestId !== requestIdRef.current) return;
+        setState({ data, loading: false, error: null, refreshedAt: Date.now() });
+      })
+      .catch((err) => {
+        if (requestId !== requestIdRef.current) return;
         setState((s) => ({
           ...s,
           loading: false,
           error: typeof err === "string" ? err : "Couldn't refresh — will retry.",
-        }))
-      );
+        }));
+      });
   }, []);
 
   // Full load whenever the deps change (first mount included).
